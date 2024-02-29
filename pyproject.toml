@@ -11,20 +11,31 @@ requires-python = ">=3.8"
 license = "MIT"
 keywords = []
 authors = [
-  { name = "Robin van der Noord", email = "robinvandernoord@gmail.com" },
+    { name = "Robin van der Noord", email = "robinvandernoord@gmail.com" },
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
-  "Programming Language :: Python",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = []
+dependencies = [
+    "uv"
+]
+
+[project.optional-dependencies]
+dev = [
+    "hatch",
+    "python-semantic-release<8",
+    "black",
+    "su6[all]",
+]
+
 
 [project.urls]
 Documentation = "https://github.com/unknown/uvx#readme"
@@ -34,39 +45,20 @@ Source = "https://github.com/unknown/uvx"
 [tool.hatch.version]
 path = "src/uvx/__about__.py"
 
-[tool.hatch.envs.default]
-dependencies = [
-  "coverage[toml]>=6.5",
-  "pytest",
-]
-[tool.hatch.envs.default.scripts]
-test = "pytest {args:tests}"
-test-cov = "coverage run -m pytest {args:tests}"
-cov-report = [
-  "- coverage combine",
-  "coverage report",
-]
-cov = [
-  "test-cov",
-  "cov-report",
-]
-
-[[tool.hatch.envs.all.matrix]]
-python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
-
-[tool.hatch.envs.types]
-dependencies = [
-  "mypy>=1.0.0",
-]
-[tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/uvx tests}"
+[tool.su6]
+directory = "src"
+include = []
+exclude = ["pytest"]
+stop-after-first-failure = false
+coverage = 100
+badge = true
 
 [tool.coverage.run]
 source_pkgs = ["uvx", "tests"]
 branch = true
 parallel = true
 omit = [
-  "src/uvx/__about__.py",
+    "src/uvx/__about__.py",
 ]
 
 [tool.coverage.paths]
@@ -75,7 +67,15 @@ tests = ["tests", "*/uvx/tests"]
 
 [tool.coverage.report]
 exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
+    "no cov",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
 ]
+
+[tool.semantic_release]
+branch = "master"
+version_variable = "src/uvx/__about__.py:__version__"
+change_log = "CHANGELOG.md"
+upload_to_repository = false
+upload_to_release = false
+build_command = "hatch build"
