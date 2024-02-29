@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.1 (2024-02-29)
+
+### Fix
+
+* Don't crash if currently not in a venv ([`cd480e3`](https://github.com/robinvandernoord/uvx/commit/cd480e3d26e61b864976451c4bc849a4fc2110ea))
+
 ## v0.2.0 (2024-02-29)
 
 ### Feature
