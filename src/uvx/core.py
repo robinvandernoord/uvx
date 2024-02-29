@@ -59,7 +59,7 @@ def virtualenv(virtualenv_dir: Path | str) -> typing.Generator[Path, None, None]
 
     virtualenv_bin_dir = str((virtualenv_dir / "bin").resolve())
     new_path = "{}:{}".format(virtualenv_bin_dir, old_path)
-    old_env = local.env["VIRTUAL_ENV"]
+    old_env = local.env.get("VIRTUAL_ENV")
     new_env = str(virtualenv_dir)
     local.env["PATH"] = new_path
     local.env["VIRTUAL_ENV"] = new_env
