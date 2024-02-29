@@ -9,15 +9,13 @@ description = 'uvx: pipx for uv'
 readme = "README.md"
 requires-python = ">=3.8"
 license = "MIT"
-keywords = []
+keywords = ["uv", "pipx", "cli", "typer", "venv"]
 authors = [
     { name = "Robin van der Noord", email = "robinvandernoord@gmail.com" },
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -25,7 +23,10 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-    "uv"
+    "uv",
+    "typer",
+    "plumbum",
+    "threadful>=0.2",
 ]
 
 [project.optional-dependencies]
@@ -36,11 +37,13 @@ dev = [
     "su6[all]",
 ]
 
+[project.scripts]
+uvx = "uvx.cli:app"
 
 [project.urls]
-Documentation = "https://github.com/unknown/uvx#readme"
-Issues = "https://github.com/unknown/uvx/issues"
-Source = "https://github.com/unknown/uvx"
+Documentation = "https://github.com/robinvandernoord/uvx#readme"
+Issues = "https://github.com/robinvandernoord/uvx/issues"
+Source = "https://github.com/robinvandernoord/uvx"
 
 [tool.hatch.version]
 path = "src/uvx/__about__.py"
@@ -52,6 +55,9 @@ exclude = ["pytest"]
 stop-after-first-failure = false
 coverage = 100
 badge = true
+
+[tool.setuptools.package-data]
+"uvx" = ["py.typed"]
 
 [tool.coverage.run]
 source_pkgs = ["uvx", "tests"]
