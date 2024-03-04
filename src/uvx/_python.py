@@ -40,8 +40,15 @@ def get_python_executable(venv: Path):
     return str(executable.resolve())  # /usr/bin/python3.xx
 
 
-def get_package_version(package: str) -> str:
+def get_package_version(package: str, venv: Path) -> str:
     """Get the currently installed version of a specific package."""
     # assumes `with virtualenv(venv)` block executing this function
     # uv pip freeze | grep ^su6==
-    return (_uv["pip", "freeze"] | grep[f"^{package}=="])().strip().split("==")[-1]
+    python = venv / "bin" / "python"
+
+    print(
+        python,
+        plumbum.local[python]["-m", "uv"]["pip", "freeze"]()
+    )
+
+    return (plumbum.local[python]["-m", "uv"]["pip", "freeze"] | grep[f"^{package}=="])().strip().split("==")[-1]

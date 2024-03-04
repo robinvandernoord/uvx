@@ -1,5 +1,7 @@
 """This file contains Logic related to the .metadata file."""
+import json
 import sys
+import tempfile
 import typing
 from pathlib import Path
 from typing import Optional
@@ -48,18 +50,36 @@ quickle_enc = quickle.Encoder(registry=[Metadata])
 quickle_dec = quickle.Decoder(registry=[Metadata])
 
 
-@threadful.thread
-def resolve_local(spec: str):
-    # todo: finish
+def fake_install(spec: str) -> dict:
     _python = plumbum.local[sys.executable]
 
     _python("-m", "uv", "pip", "install", "pip")  # ensure we have pip
 
-    result = _python("-m", "pip", "install", "--no-deps", "--dry-run", "--ignore-installed", "--report",
-                     "/tmp/out.json", spec)
+    with tempfile.NamedTemporaryFile() as f:
+        _python("-m", "pip", "install", "--no-deps", "--dry-run", "--ignore-installed", "--report",
+                f.name, spec)
 
-    print(result)
-    return result
+        return json.load(f)
+
+
+@threadful.thread
+def resolve_local(spec: str) -> tuple[str | None, str | None]:
+    try:
+        full_data = fake_install(spec)
+        install_data = full_data["install"][0]
+
+        name = install_data['metadata']["name"]
+        extras = install_data.get('requested_extras')
+        file_url = install_data["download_info"]["url"]
+
+        if extras:
+            _extras = ",".join(extras)
+            return f"{name}[{_extras}]", file_url
+        else:
+            return name, file_url
+    except Exception as e:
+        print('eeeee', e)
+        return None, None
 
 
 def collect_metadata(spec: str) -> Metadata:
@@ -67,19 +87,25 @@ def collect_metadata(spec: str) -> Metadata:
     try:
         parsed_spec = Requirement(spec)
 
-        return Metadata(
-            install_spec=spec,
-            name=parsed_spec.name,
-            scripts={},  # postponed
-            extras=parsed_spec.extras,
-            requested_version=str(parsed_spec.specifier),
-            installed_version="",  # postponed
-            python="",  # postponed
-        )
-    except InvalidRequirement:
-        threadful.animate(resolve_local(spec), text=f"Trying to install local package '{spec}'")
-        print("reeeeeeeeeeeeeeee")
-        exit(1)
+    except InvalidRequirement as e:
+        local, path = threadful.animate(resolve_local(spec), text=f"Trying to install local package '{spec}'")
+
+        if not local:
+            raise None
+
+        parsed_spec = Requirement(local)
+
+        spec = f"{parsed_spec.name} @ {path.removeprefix('file://')}"
+
+    return Metadata(
+        install_spec=spec,
+        name=parsed_spec.name,
+        scripts={},  # postponed
+        extras=parsed_spec.extras,
+        requested_version=str(parsed_spec.specifier),
+        installed_version="",  # postponed
+        python="",  # postponed
+    )
 
 
 def store_metadata(meta: Metadata, venv: Path):

@@ -125,10 +125,10 @@ def install_package(
 
     with virtualenv(venv), exit_on_pb_error():
         try:
-            animate(uv("pip", "install", package_name), text=f"installing {meta.name}")
+            animate(uv("pip", "install", meta.install_spec), text=f"installing {meta.name}")
 
             # must still be in the venv for these:
-            meta.installed_version = get_package_version(meta.name)
+            meta.installed_version = get_package_version(meta.name, venv)
             meta.python = get_python_version(venv)
             meta.python_raw = get_python_executable(venv)
 
