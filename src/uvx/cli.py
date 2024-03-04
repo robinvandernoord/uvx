@@ -111,15 +111,17 @@ def list_venvs(short: bool = False, verbose: bool = False, json: bool = False):
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def runuv(venv: str, ctx: Context):
     """Run 'uv' in the right venv."""
-    with as_virtualenv(venv):
-        run_command("uv", *ctx.args)
+    with as_virtualenv(venv) as venv_path:
+        python = venv_path / "bin" / "python"
+        run_command(str(python), "-m", "uv", *ctx.args)
 
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def runpip(venv: str, ctx: Context):
     """Run 'pip' in the right venv."""
-    with as_virtualenv(venv):
-        plumbum.local["uv"]("pip", "install", "pip")
+    with as_virtualenv(venv) as venv_path:
+        python = venv_path / "bin" / "python"
+        plumbum.local[str(python)]("-m", "uv", "pip", "install", "pip")
         run_command("pip", *ctx.args)
 
 
@@ -179,7 +181,7 @@ def completions():  # noqa
 def version_callback():
     """Show the current versions when running with --version."""
     rich.print("uvx", __version__)
-    run_command("uv", "--version", printfn=rich.print)
+    run_command(sys.executable, "-m", "uv", "--version", printfn=rich.print)
     rich.print("Python", sys.version.split(" ")[0])
 
 
