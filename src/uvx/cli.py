@@ -105,8 +105,6 @@ def list_venvs(short: bool = False, verbose: bool = False, json: bool = False):
             _list_normal(name, metadata, verbose=verbose)
 
 
-# run
-
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def runuv(venv: str, ctx: Context):
