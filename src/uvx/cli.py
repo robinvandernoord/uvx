@@ -1,16 +1,26 @@
 """This file builds the Typer cli."""
 
+import os
+import subprocess
+import sys
 from typing import Optional
 
+import plumbum
 import rich
 import typer
+from typer import Context
 
 from .core import (
+    as_virtualenv,
+    ensure_local_folder,
     format_bools,
     install_package,
     list_packages,
     reinstall_package,
+    run_command,
     uninstall_package,
+    uv,
+    virtualenv,
 )
 from .metadata import Metadata, read_metadata
 
@@ -44,7 +54,6 @@ TAB = " " * 3
 
 
 def list_normal(name: str, metadata: Optional[Metadata], verbose: bool = False):
-
     if not metadata:
         print("-", name)
         rich.print(TAB, "[red]Missing metadata [/red]")
@@ -96,6 +105,33 @@ def list_venvs(short: bool = False, verbose: bool = False, json: bool = False):
 
 
 # run
+
+
+@app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+)
+def runuv(venv: str, ctx: Context):
+    with as_virtualenv(venv):
+        run_command("uv", *ctx.args)
+
+
+@app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+)
+def runpip(venv: str, ctx: Context):
+    with as_virtualenv(venv):
+        plumbum.local["uv"]("pip", "install", "pip")
+        run_command("pip", *ctx.args)
+
+
+@app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+)
+def runpython(venv: str, ctx: Context):
+    with as_virtualenv(venv) as venv_path:
+        python = venv_path / "bin" / "python"
+        subprocess.run([python, *ctx.args])
+
 
 # upgrade
 

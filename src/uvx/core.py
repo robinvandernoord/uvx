@@ -82,6 +82,19 @@ def virtualenv(virtualenv_dir: Path | str) -> typing.Generator[Path, None, None]
 
 
 @contextmanager
+def as_virtualenv(venv_name: str) -> typing.Generator[Path, None, None]:
+    """
+    External variant of the 'virtualenv' context manager above.
+
+    This variant takes in a venv name instead of a whole path.
+    """
+    workdir = ensure_local_folder()
+    venv_path = workdir / "venvs" / venv_name
+    with virtualenv(venv_path):
+        yield venv_path
+
+
+@contextmanager
 def exit_on_pb_error() -> typing.Generator[None, None, None]:
     """Pass the plumbum error to the stderr and quit."""
     try:
@@ -367,9 +380,24 @@ def create_venv(name: str, python: Optional[str] = None, force: bool = False) ->
 
 
 def list_packages() -> typing.Generator[tuple[str, Metadata | None], None, None]:
+    """
+    Iterate through all uvx venvs and load the metadata files one-by-one.
+    """
     workdir = ensure_local_folder()
 
     for subdir in workdir.glob("venvs/*"):
         metadata = read_metadata(subdir)
 
         yield subdir.name, metadata
+
+
+def run_command(command: str, *args: str):
+    """
+    Run a command via plumbum without raising an error on exception.
+    """
+    # retcode = None makes the command not raise an exception on error:
+    exit_code, stdout, stderr = plumbum.local[command][args].run(retcode=None)
+
+    print(stdout)
+    print(stderr, file=sys.stderr)
+    return exit_code

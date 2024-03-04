@@ -61,6 +61,3 @@ def read_metadata(venv: Path) -> Metadata | None:
 
     with metafile.open("rb") as f:
         return typing.cast(Metadata, quickle_dec.loads(f.read()))
-
-
-def get_metadata(): ...
