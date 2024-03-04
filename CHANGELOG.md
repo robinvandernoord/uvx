@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.0 (2024-03-04)
+
+### Feature
+
+* Runpip, runuv and runpython subcommands ([`e9b2df1`](https://github.com/robinvandernoord/uvx/commit/e9b2df1d93cdb32fe64bbc04f40f5fc06835c59b))
+
+### Fix
+
+* More dependencies; docs ([`dc0ef76`](https://github.com/robinvandernoord/uvx/commit/dc0ef76c7f0087890841e03bd030aad2d2146e87))
+
 ## v0.3.0 (2024-03-04)
 
 ### Feature
