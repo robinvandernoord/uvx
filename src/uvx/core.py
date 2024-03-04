@@ -14,13 +14,9 @@ from plumbum.cmd import uv as _uv  # type: ignore
 from threadful import thread
 from threadful.bonus import animate
 
-from ._constants import BIN_DIR, WORK_DIR
-from ._python import (
-    get_package_version,
-    get_python_executable,
-    get_python_version,
-    run_python_code_in_venv,
-)
+from ._constants import WORK_DIR
+from ._python import get_package_version, get_python_executable, get_python_version
+from ._symlinks import find_symlinks, install_symlinks, remove_symlink
 from .metadata import Metadata, collect_metadata, read_metadata, store_metadata
 
 
@@ -104,114 +100,9 @@ def exit_on_pb_error() -> typing.Generator[None, None, None]:
         exit(e.retcode)
 
 
-def find_symlinks(library: str, venv: Path) -> list[str]:
-    """
-    Find the symlinks for a library in a virtual environment.
-
-    Args:
-        library (str): The name of the library.
-        venv (Path): The path of the virtual environment.
-
-    Returns:
-        list: The list of symlinks.
-    """
-    code = f"""
-    import importlib.metadata
-
-    for script in importlib.metadata.distribution('{library}').entry_points:
-        if script.group != "console_scripts":
-            continue
-
-        print(script.name)
-    """
-
-    try:
-        raw = run_python_code_in_venv(code, venv)
-        return [_ for _ in raw.split("\n") if _]
-    except Exception:
-        return []
-
-
 def format_bools(data: dict[str, bool], sep=" | ") -> str:
-    return sep.join(
-        [f"[green]{k}[/green]" if v else f"[red]{k}[/red]" for k, v in data.items()]
-    )
-
-
-def install_symlink(
-    symlink: str, venv: Path, force: bool = False, binaries: tuple[str, ...] = ()
-) -> bool:
-    """
-    Install a symlink in the virtual environment.
-
-    Args:
-        symlink (str): The name of the symlink.
-        venv (Path): The path of the virtual environment.
-        force (bool, optional): If True, overwrites existing symlink. Defaults to False.
-        binaries (tuple[str, ...], optional): The binaries to install. Defaults to ().
-
-    Returns:
-        bool: True if the symlink was installed, False otherwise.
-    """
-    if binaries and symlink not in binaries:
-        return False
-
-    target_path = BIN_DIR / symlink
-
-    if target_path.exists():
-        if force:
-            target_path.unlink()
-        else:
-            print(
-                f"Script {symlink} already exists in {BIN_DIR}. Use --force to ignore this warning.",
-                file=sys.stderr,
-            )
-            return False
-
-    symlink_path = venv / "bin" / symlink
-    if not symlink_path.exists():
-        print(
-            f"Could not symlink {symlink_path} because the script didn't exist.",
-            file=sys.stderr,
-        )
-        return False
-
-    target_path.symlink_to(symlink_path)
-    return True
-
-
-def install_symlinks(
-    library: str,
-    venv: Path,
-    force: bool = False,
-    binaries: tuple[str, ...] = (),
-    meta: Optional[Metadata] = None,
-) -> bool:
-    """
-    Install symlinks for a library in a virtual environment.
-
-    Args:
-        library (str): The name of the library.
-        venv (Path): The path of the virtual environment.
-        force (bool, optional): If True, overwrites existing symlinks. Defaults to False.
-        binaries (tuple[str, ...], optional): The binaries to install. Defaults to ().
-        meta: Optional metadata object to store results in
-
-    Returns:
-        bool: True if any symlink was installed, False otherwise.
-    """
-    symlinks = find_symlinks(library, venv)
-
-    results = {}
-    for symlink in symlinks:
-        results[symlink] = install_symlink(
-            symlink, venv, force=force, binaries=binaries
-        )
-
-    if meta:
-        meta.scripts = results
-
-    return any(results.values())
+    """Given a dictionary, format every format with the value True in green and False in red."""
+    return sep.join([f"[green]{k}[/green]" if v else f"[red]{k}[/red]" for k, v in data.items()])
 
 
 def install_package(
@@ -252,9 +143,25 @@ def install_package(
     store_metadata(meta, venv)
 
 
-def reinstall_package(
-    package_name: str, python: Optional[str] = None, force: bool = False
-):
+def reinstall_package(package_name: str, python: Optional[str] = None, force: bool = False):
+    """
+    Reinstalls a package in a virtual environment.
+
+    This function first collects metadata about the package, then checks if the package is already installed in the
+    virtual environment. If the package is not installed, it prompts the user to install it first. If the package is
+    installed, it uninstalls the package and then reinstalls it. If a new version or extra is requested or no old
+    metadata is available, it installs from the CLI argument package name. Otherwise, it installs from the old metadata
+    spec. The Python version used for the virtual environment can be specified. If not specified, it uses the Python
+    version from the existing metadata if available.
+
+    Args:
+        package_name (str): The name of the package to reinstall.
+        python (Optional[str], optional): The Python version to use for the virtual environment. Defaults to None.
+        force (bool, optional): If True, ignores if the virtual environment does not exist. Defaults to False.
+
+    Raises:
+        SystemExit: If the package is not installed in the virtual environment and force is False.
+    """
     new_metadata = collect_metadata(package_name)
 
     workdir = ensure_local_folder()
@@ -262,8 +169,7 @@ def reinstall_package(
 
     if not venv.exists():
         rich.print(
-            f"'{new_metadata.name}' was not previously installed. "
-            f"Please run 'uvx install {package_name}' instead."
+            f"'{new_metadata.name}' was not previously installed. " f"Please run 'uvx install {package_name}' instead."
         )
         exit(1)
 
@@ -271,27 +177,13 @@ def reinstall_package(
 
     # if a new version or extra is requested or no old metadata is available, install from cli arg package name.
     # otherwise, install from old metadata spec
-    new_install_spec = bool(
-        new_metadata.requested_version or new_metadata.extras or not existing_metadata
-    )
-    install_spec = package_name if new_install_spec else existing_metadata.install_spec
+    new_install_spec = bool(new_metadata.requested_version or new_metadata.extras)
+    install_spec = package_name if new_install_spec or not existing_metadata else existing_metadata.install_spec
 
     python = python or (existing_metadata.python_raw if existing_metadata else None)
 
     uninstall_package(new_metadata.name, force=force)
     install_package(install_spec, python=python, force=force)
-
-
-def remove_symlink(symlink: str):
-    """
-    Remove a symlink.
-
-    Args:
-        symlink (str): The name of the symlink.
-    """
-    target_path = BIN_DIR / symlink
-    if target_path.exists() and target_path.is_symlink():
-        target_path.unlink(missing_ok=True)
 
 
 def remove_dir(path: Path):
@@ -331,7 +223,9 @@ def uninstall_package(package_name: str, force: bool = False):
         remove_symlink(symlink)
 
     remove_dir(venv_path)
-    rich.print(f"🗑️ {package_name} ({meta.installed_version}) removed!")  # :trash:
+
+    _version = f" ({meta.installed_version})" if meta else ""
+    rich.print(f"🗑️ {package_name}{_version} removed!")  # :trash:
 
 
 def ensure_local_folder() -> Path:
@@ -380,9 +274,7 @@ def create_venv(name: str, python: Optional[str] = None, force: bool = False) ->
 
 
 def list_packages() -> typing.Generator[tuple[str, Metadata | None], None, None]:
-    """
-    Iterate through all uvx venvs and load the metadata files one-by-one.
-    """
+    """Iterate through all uvx venvs and load the metadata files one-by-one."""
     workdir = ensure_local_folder()
 
     for subdir in workdir.glob("venvs/*"):
@@ -392,9 +284,7 @@ def list_packages() -> typing.Generator[tuple[str, Metadata | None], None, None]
 
 
 def run_command(command: str, *args: str):
-    """
-    Run a command via plumbum without raising an error on exception.
-    """
+    """Run a command via plumbum without raising an error on exception."""
     # retcode = None makes the command not raise an exception on error:
     exit_code, stdout, stderr = plumbum.local[command][args].run(retcode=None)
 

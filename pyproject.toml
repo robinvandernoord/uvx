@@ -57,6 +57,24 @@ stop-after-first-failure = false
 coverage = 100
 badge = true
 
+[tool.black]
+target-version = ["py311"]
+line-length = 120
+# 'extend-exclude' excludes files or directories in addition to the defaults
+extend-exclude = '''
+# A regex preceded with ^/ will apply only to files and directories
+# in the root of the project.
+(
+  ^.*\.bak\/.+     # ignore every .bak directory
+  ^.*venv.+\/.+    # ignore every venv directory
+  venv.+|.+\.bak   # idk why it suddenly works, let's not touch it
+)
+'''
+
+[tool.isort]
+profile = "black"
+extend_skip_glob = ["*.bak/*"]
+
 [tool.setuptools.package-data]
 "uvx" = ["py.typed"]
 

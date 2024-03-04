@@ -1,34 +1,29 @@
 """This file builds the Typer cli."""
 
-import os
-import subprocess
-import sys
+import subprocess  # nosec
 from typing import Optional
 
-import plumbum
+import plumbum  # type: ignore
 import rich
 import typer
 from typer import Context
 
 from .core import (
     as_virtualenv,
-    ensure_local_folder,
     format_bools,
     install_package,
     list_packages,
     reinstall_package,
     run_command,
     uninstall_package,
-    uv,
-    virtualenv,
 )
-from .metadata import Metadata, read_metadata
+from .metadata import Metadata
 
 app = typer.Typer()
 
 
 @app.command()
-def install(package_name: str, force: bool = False, python: str = None):
+def install(package_name: str, force: bool = False, python: str = ""):
     """Install a package (by pip name)."""
     install_package(package_name, python=python, force=force)
 
@@ -42,18 +37,19 @@ def uninstall(package_name: str, force: bool = False):
 
 @app.command()
 def reinstall(package: str, python: Optional[str] = None, force: bool = False):
+    """Uninstall a package (by pip name) and re-install from the original spec (unless a new spec is supplied)."""
     reinstall_package(package, python=python, force=force)
 
 
 # list
-def list_short(name: str, metadata: Optional[Metadata]):
+def _list_short(name: str, metadata: Optional[Metadata]):
     rich.print("-", name, metadata.installed_version if metadata else "[red]?[/red]")
 
 
 TAB = " " * 3
 
 
-def list_normal(name: str, metadata: Optional[Metadata], verbose: bool = False):
+def _list_normal(name: str, metadata: Optional[Metadata], verbose: bool = False):
     if not metadata:
         print("-", name)
         rich.print(TAB, "[red]Missing metadata [/red]")
@@ -75,7 +71,7 @@ def list_normal(name: str, metadata: Optional[Metadata], verbose: bool = False):
         rich.print(TAB, "Scripts:", format_bools(metadata.scripts))
 
 
-def list_venvs_json():
+def _list_venvs_json():
     from json import dumps
 
     print(
@@ -90,47 +86,41 @@ def list_venvs_json():
 
 @app.command(name="list")
 def list_venvs(short: bool = False, verbose: bool = False, json: bool = False):
-    """
-    List packages and apps installed with uvx.
-    """
-
+    """List packages and apps installed with uvx."""
     if json:
-        return list_venvs_json()
+        return _list_venvs_json()
 
     for name, metadata in list_packages():
         if short:
-            list_short(name, metadata)
+            _list_short(name, metadata)
         else:
-            list_normal(name, metadata, verbose=verbose)
+            _list_normal(name, metadata, verbose=verbose)
 
 
 # run
 
 
-@app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
-)
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def runuv(venv: str, ctx: Context):
+    """Run 'uv' in the right venv."""
     with as_virtualenv(venv):
         run_command("uv", *ctx.args)
 
 
-@app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
-)
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def runpip(venv: str, ctx: Context):
+    """Run 'pip' in the right venv."""
     with as_virtualenv(venv):
         plumbum.local["uv"]("pip", "install", "pip")
         run_command("pip", *ctx.args)
 
 
-@app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
-)
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def runpython(venv: str, ctx: Context):
+    """Run 'python' in the right venv."""
     with as_virtualenv(venv) as venv_path:
         python = venv_path / "bin" / "python"
-        subprocess.run([python, *ctx.args])
+        subprocess.run([python, *ctx.args])  # nosec
 
 
 # upgrade
