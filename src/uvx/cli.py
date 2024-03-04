@@ -105,7 +105,6 @@ def list_venvs(short: bool = False, verbose: bool = False, json: bool = False):
             _list_normal(name, metadata, verbose=verbose)
 
 
-
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def runuv(venv: str, ctx: Context):
     """Run 'uv' in the right venv."""
@@ -118,8 +117,6 @@ def runuv(venv: str, ctx: Context):
 def runpip(venv: str, ctx: Context):
     """Run 'pip' in the right venv."""
     with as_virtualenv(venv) as venv_path:
-        python = venv_path / "bin" / "python"
-        plumbum.local[str(python)]("-m", "uv", "pip", "install", "pip")
         run_command("pip", *ctx.args)
 
 
@@ -136,8 +133,6 @@ def runpython(venv: str, ctx: Context):
 # self-upgrade (uv and uvx)
 
 # inject
-
-# version or --version (incl. 'uv' version and Python version)
 
 # ...
 

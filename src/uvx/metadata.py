@@ -1,12 +1,15 @@
 """This file contains Logic related to the .metadata file."""
-
+import sys
 import typing
 from pathlib import Path
 from typing import Optional
 
+import plumbum
 import quickle  # type: ignore
-from packaging.requirements import Requirement
+import threadful
+from packaging.requirements import Requirement, InvalidRequirement
 
+from ._python import _run_python_in_venv
 from ._symlinks import check_symlinks
 
 if typing.TYPE_CHECKING:
@@ -45,19 +48,38 @@ quickle_enc = quickle.Encoder(registry=[Metadata])
 quickle_dec = quickle.Decoder(registry=[Metadata])
 
 
+@threadful.thread
+def resolve_local(spec: str):
+    # todo: finish
+    _python = plumbum.local[sys.executable]
+
+    _python("-m", "uv", "pip", "install", "pip")  # ensure we have pip
+
+    result = _python("-m", "pip", "install", "--no-deps", "--dry-run", "--ignore-installed", "--report",
+                     "/tmp/out.json", spec)
+
+    print(result)
+    return result
+
+
 def collect_metadata(spec: str) -> Metadata:
     """Parse an install spec into a (incomplete) Metadata object."""
-    parsed_spec = Requirement(spec)
+    try:
+        parsed_spec = Requirement(spec)
 
-    return Metadata(
-        install_spec=spec,
-        name=parsed_spec.name,
-        scripts={},  # postponed
-        extras=parsed_spec.extras,
-        requested_version=str(parsed_spec.specifier),
-        installed_version="",  # postponed
-        python="",  # postponed
-    )
+        return Metadata(
+            install_spec=spec,
+            name=parsed_spec.name,
+            scripts={},  # postponed
+            extras=parsed_spec.extras,
+            requested_version=str(parsed_spec.specifier),
+            installed_version="",  # postponed
+            python="",  # postponed
+        )
+    except InvalidRequirement:
+        threadful.animate(resolve_local(spec), text=f"Trying to install local package '{spec}'")
+        print("reeeeeeeeeeeeeeee")
+        exit(1)
 
 
 def store_metadata(meta: Metadata, venv: Path):

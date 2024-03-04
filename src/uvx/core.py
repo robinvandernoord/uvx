@@ -238,7 +238,7 @@ def ensure_local_folder() -> Path:
     return WORK_DIR
 
 
-def create_venv(name: str, python: Optional[str] = None, force: bool = False) -> Path:
+def create_venv(name: str, python: Optional[str] = None, force: bool = False, with_pip: bool = True) -> Path:
     """
     Create a virtual environment.
 
@@ -268,6 +268,12 @@ def create_venv(name: str, python: Optional[str] = None, force: bool = False) ->
         args.extend(["--python", python])
 
     uv(*args).join()
+
+    if with_pip:
+        with virtualenv(venv_path):
+            animate(
+                uv("pip", "install", "pip", "uv")
+            )
 
     return venv_path
 
