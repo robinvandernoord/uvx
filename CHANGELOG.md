@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.0 (2024-03-04)
+
+### Feature
+
+* Implemented reinstall and list methods, save .metadata file in app-specific venv ([`8a44dab`](https://github.com/robinvandernoord/uvx/commit/8a44dabf39ea91765c87bdabe03e5f30460b954e))
+
 ## v0.2.1 (2024-02-29)
 
 ### Fix
