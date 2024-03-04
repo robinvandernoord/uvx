@@ -27,6 +27,7 @@ dependencies = [
     "typer",
     "plumbum",
     "threadful>=0.2",
+    "quickle",
 ]
 
 [project.optional-dependencies]
