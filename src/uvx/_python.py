@@ -1,8 +1,11 @@
+import sys
 import textwrap
 from pathlib import Path
 
 import plumbum  # type: ignore
-from plumbum.cmd import grep, uv  # type: ignore
+from plumbum.cmd import grep  # type: ignore
+
+_uv = plumbum.local[sys.executable]["-m", "uv"]
 
 
 def _run_python_in_venv(*args: str, venv: Path) -> str:
@@ -41,4 +44,4 @@ def get_package_version(package: str) -> str:
     """Get the currently installed version of a specific package."""
     # assumes `with virtualenv(venv)` block executing this function
     # uv pip freeze | grep ^su6==
-    return (uv["pip", "freeze"] | grep[f"^{package}=="])().strip().split("==")[-1]
+    return (_uv["pip", "freeze"] | grep[f"^{package}=="])().strip().split("==")[-1]

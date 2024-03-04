@@ -13,9 +13,16 @@ uv install uvx
 pipx install uvx
 ```
 
+## Usage
+```bash
+uvx
+```
+
+Run `uvx` without any arguments to see all possible subcommands.
+
 ## License
 
-`usvx` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
+`uvx` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
 
 ## Changelog
 

@@ -10,12 +10,11 @@ from typing import Optional
 import plumbum  # type: ignore
 import rich
 from plumbum import local  # type: ignore
-from plumbum.cmd import uv as _uv  # type: ignore
 from threadful import thread
 from threadful.bonus import animate
 
 from ._constants import WORK_DIR
-from ._python import get_package_version, get_python_executable, get_python_version
+from ._python import _uv, get_package_version, get_python_executable, get_python_version
 from ._symlinks import find_symlinks, install_symlinks, remove_symlink
 from .metadata import Metadata, collect_metadata, read_metadata, store_metadata
 
@@ -283,11 +282,13 @@ def list_packages() -> typing.Generator[tuple[str, Metadata | None], None, None]
         yield subdir.name, metadata
 
 
-def run_command(command: str, *args: str):
+def run_command(command: str, *args: str, printfn: typing.Callable[..., None] = print):
     """Run a command via plumbum without raising an error on exception."""
     # retcode = None makes the command not raise an exception on error:
     exit_code, stdout, stderr = plumbum.local[command][args].run(retcode=None)
 
-    print(stdout)
-    print(stderr, file=sys.stderr)
+    if stdout:
+        printfn(stdout.strip())
+    if stderr:
+        printfn(stderr.strip(), file=sys.stderr)
     return exit_code
