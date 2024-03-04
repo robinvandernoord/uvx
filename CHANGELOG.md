@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.1 (2024-03-04)
+
+### Fix
+
+* Always access 'uv' via sys.executable so it won't be missing ([`693708e`](https://github.com/robinvandernoord/uvx/commit/693708ed9a9c25c628dc061cc21da4bf38cc15c0))
+
 ## v0.4.0 (2024-03-04)
 
 ### Feature
