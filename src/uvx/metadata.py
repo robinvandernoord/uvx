@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 import plumbum
-import quickle  # type: ignore
+import msgspec
 import threadful
 from packaging.requirements import Requirement, InvalidRequirement
 
@@ -18,7 +18,7 @@ if typing.TYPE_CHECKING:
     from typing_extensions import Self
 
 
-class Metadata(quickle.Struct):
+class Metadata(msgspec.Struct, array_like=True):
     """Structure of the .metadata file."""
 
     name: str
@@ -46,8 +46,8 @@ class Metadata(quickle.Struct):
         return self
 
 
-quickle_enc = quickle.Encoder(registry=[Metadata])
-quickle_dec = quickle.Decoder(registry=[Metadata])
+encoder = msgspec.msgpack.Encoder()
+decoder = msgspec.msgpack.Decoder(type=Metadata)
 
 
 def fake_install(spec: str) -> dict:
@@ -77,8 +77,7 @@ def resolve_local(spec: str) -> tuple[str | None, str | None]:
             return f"{name}[{_extras}]", file_url
         else:
             return name, file_url
-    except Exception as e:
-        print('eeeee', e)
+    except Exception:
         return None, None
 
 
@@ -90,8 +89,8 @@ def collect_metadata(spec: str) -> Metadata:
     except InvalidRequirement as e:
         local, path = threadful.animate(resolve_local(spec), text=f"Trying to install local package '{spec}'")
 
-        if not local:
-            raise None
+        if not local or not path:
+            raise e
 
         parsed_spec = Requirement(local)
 
@@ -111,7 +110,7 @@ def collect_metadata(spec: str) -> Metadata:
 def store_metadata(meta: Metadata, venv: Path):
     """Save the metadata struct to .metadata in a venv."""
     with (venv / ".metadata").open("wb") as f:
-        f.write(quickle_enc.dumps(meta))
+        f.write(encoder.encode(meta))
 
 
 def read_metadata(venv: Path) -> Metadata | None:
@@ -121,4 +120,4 @@ def read_metadata(venv: Path) -> Metadata | None:
         return None
 
     with metafile.open("rb") as f:
-        return typing.cast(Metadata, quickle_dec.loads(f.read()))
+        return typing.cast(Metadata, decoder.decode(f.read()))

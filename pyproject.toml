@@ -28,7 +28,7 @@ dependencies = [
     "plumbum",
     "threadful>=0.2",
     "rich",
-    "quickle",
+    "msgspec",
     "packaging",
 ]
 

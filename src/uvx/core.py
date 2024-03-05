@@ -166,7 +166,7 @@ def reinstall_package(package_name: str, python: Optional[str] = None, force: bo
     workdir = ensure_local_folder()
     venv = workdir / "venvs" / new_metadata.name
 
-    if not venv.exists():
+    if not venv.exists() and not force:
         rich.print(
             f"'{new_metadata.name}' was not previously installed. " f"Please run 'uvx install {package_name}' instead."
         )
