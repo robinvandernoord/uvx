@@ -11,7 +11,7 @@ import msgspec
 import plumbum  # type: ignore
 import threadful
 from packaging.requirements import InvalidRequirement, Requirement
-from result import Err, Ok, is_err
+from result import Ok
 
 from ._maybe import Empty, Maybe
 from ._symlinks import check_symlinks
@@ -34,6 +34,7 @@ class Metadata(msgspec.Struct, array_like=True):
     installed_version: str
     python: str = ""
     python_raw: str = ""
+    injected: Optional[list[str]] = None
 
     @typing.overload
     def _convert_type(self, value: set[V]) -> list[V]:  # type: ignore
