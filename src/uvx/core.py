@@ -130,6 +130,8 @@ def install_package(
     if venv is None:
         venv = create_venv(meta.name, python=python, force=force)
 
+    # todo: make --force use --no-cache
+
     with virtualenv(venv), exit_on_pb_error():
         try:
             animate(uv("pip", "install", meta.install_spec), text=f"installing {meta.name}")

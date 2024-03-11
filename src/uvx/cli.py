@@ -87,12 +87,12 @@ def _list_normal(name: str, metadata: Maybe[Metadata], verbose: bool = False):
 
     extras = list(md.extras)
     name_with_extras = name if not extras else f"{name}{extras}"
-    print("-", name_with_extras)
+    rich.print("-", name_with_extras)
 
     md.check_script_symlinks(name)
 
     if verbose:
-        rich.print(TAB, metadata)
+        rich.print(TAB, str(md))
     else:
         rich.print(
             TAB,
@@ -110,7 +110,7 @@ def _list_venvs_json():
                 name: metadata.map_or({}, lambda md: md.check_script_symlinks(name).to_dict())
                 for name, metadata in list_packages()
             },
-            indent=2
+            indent=2,
         )
     )
 

@@ -89,7 +89,7 @@ def resolve_local(spec: str) -> tuple[Maybe[str], Maybe[str]]:
             _extras = ",".join(extras)
             return Ok(f"{name}[{_extras}]"), Ok(file_url)
         else:
-            return name, file_url
+            return Ok(name), Ok(file_url)
     except Exception:
         return Empty(), Empty()
 
