@@ -10,10 +10,12 @@ from typing import Optional
 import plumbum  # type: ignore
 import rich
 from plumbum import local  # type: ignore
+from result import Ok
 from threadful import thread
 from threadful.bonus import animate
 
 from ._constants import WORK_DIR
+from ._maybe import Maybe
 from ._python import _uv, get_package_version, get_python_executable, get_python_version
 from ._symlinks import find_symlinks, install_symlinks, remove_symlink
 from .metadata import Metadata, collect_metadata, read_metadata, store_metadata
@@ -177,9 +179,17 @@ def reinstall_package(package_name: str, python: Optional[str] = None, force: bo
     # if a new version or extra is requested or no old metadata is available, install from cli arg package name.
     # otherwise, install from old metadata spec
     new_install_spec = bool(new_metadata.requested_version or new_metadata.extras)
-    install_spec = package_name if new_install_spec or not existing_metadata else existing_metadata.install_spec
 
-    python = python or (existing_metadata.python_raw if existing_metadata else None)
+    # install_spec = package_name if new_install_spec or not existing_metadata else existing_metadata.install_spec
+    match (new_install_spec, existing_metadata):
+        case (False, Ok(metadata)):
+            install_spec = metadata.install_spec
+        case _:
+            # if new install spec is True or there is no old metadata:
+            install_spec = package_name
+
+    # python = python or (existing_metadata.python_raw if existing_metadata else None)
+    python = python or existing_metadata.map_or(None, lambda metadata: metadata.python_raw)
 
     uninstall_package(new_metadata.name, force=force)
     install_package(install_spec, python=python, force=force)
@@ -195,10 +205,11 @@ def remove_dir(path: Path):
     if path.exists():
         shutil.rmtree(path)
 
+
 def upgrade_package(package_name: str, force: bool = False):
     # run `uv pip install --upgrade package` with requested install spec (version, extras, injected)
     # if --force is used, the previous version is ignored.
-    print('upgrade', package_name)
+    print("upgrade", package_name)
 
     spec_metadata = collect_metadata(package_name)
 
@@ -224,14 +235,15 @@ def uninstall_package(package_name: str, force: bool = False):
     workdir = ensure_local_folder()
     venv_path = workdir / "venvs" / package_name
 
-    meta = read_metadata(venv_path)
-
     if not venv_path.exists() and not force:
+        escaped = package_name.replace("[", "\\[")
         rich.print(
-            f"No virtualenv for '{package_name}', stopping. Use '--force' to remove an executable with that name anyway.",
+            f"No virtualenv for '{escaped}', stopping. Use '--force' to remove an executable with that name anyway.",
             file=sys.stderr,
         )
         exit(1)
+
+    meta = read_metadata(venv_path)
 
     symlinks = find_symlinks(package_name, venv_path) or [package_name]
 
@@ -240,7 +252,7 @@ def uninstall_package(package_name: str, force: bool = False):
 
     remove_dir(venv_path)
 
-    _version = f" ({meta.installed_version})" if meta else ""
+    _version = meta.map_or("", lambda meta: f" ({meta.installed_version})")
     rich.print(f"🗑️ {package_name}{_version} removed!")  # :trash:
 
 
@@ -288,14 +300,12 @@ def create_venv(name: str, python: Optional[str] = None, force: bool = False, wi
 
     if with_pip:
         with virtualenv(venv_path):
-            animate(
-                uv("pip", "install", "pip", "uv")
-            )
+            animate(uv("pip", "install", "pip", "uv"))
 
     return venv_path
 
 
-def list_packages() -> typing.Generator[tuple[str, Metadata | None], None, None]:
+def list_packages() -> typing.Generator[tuple[str, Maybe[Metadata]], None, None]:
     """Iterate through all uvx venvs and load the metadata files one-by-one."""
     workdir = ensure_local_folder()
 
@@ -305,7 +315,7 @@ def list_packages() -> typing.Generator[tuple[str, Metadata | None], None, None]
         yield subdir.name, metadata
 
 
-def run_command(command: str, *args: str, printfn: typing.Callable[..., None] = print):
+def run_command(command: str, *args: str, printfn: typing.Callable[..., None] = print) -> int:
     """Run a command via plumbum without raising an error on exception."""
     # retcode = None makes the command not raise an exception on error:
     exit_code, stdout, stderr = plumbum.local[command][args].run(retcode=None)

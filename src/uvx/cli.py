@@ -9,11 +9,13 @@ from typing import Optional
 
 import rich
 import typer
+from result import Err, Ok
 from typer import Context
 
 from uvx._constants import BIN_DIR
 
 from .__about__ import __version__
+from ._maybe import Maybe
 from .core import (
     as_virtualenv,
     format_bools,
@@ -41,6 +43,7 @@ def install(package_name: str, force: bool = False, python: str = ""):
 def upgrade(package_name: str, force: bool = False):
     upgrade_package(package_name, force=force)
 
+
 @app.command(name="remove")
 @app.command(name="uninstall")
 def uninstall(package_name: str, force: bool = False):
@@ -55,33 +58,38 @@ def reinstall(package: str, python: Optional[str] = None, force: bool = False):
 
 
 # list
-def _list_short(name: str, metadata: Optional[Metadata]):
-    rich.print("-", name, metadata.installed_version if metadata else "[red]?[/red]")
+def _list_short(name: str, metadata: Maybe[Metadata]):
+    rich.print("-", name, metadata.map_or("[red]?[/red]", lambda md: md.installed_version))
+    # rich.print("-", name, metadata.installed_version if metadata else "[red]?[/red]")
 
 
 TAB = " " * 3
 
 
-def _list_normal(name: str, metadata: Optional[Metadata], verbose: bool = False):
-    if not metadata:
-        print("-", name)
-        rich.print(TAB, "[red]Missing metadata [/red]")
-        return
-    else:
-        extras = list(metadata.extras)
-        name_with_extras = name if not extras else f"{name}{extras}"
-        print("-", name_with_extras)
+def _list_normal(name: str, metadata: Maybe[Metadata], verbose: bool = False):
+    match metadata:
+        case Err(_):
+            print("-", name)
+            rich.print(TAB, "[red]Missing metadata [/red]")
+            return
+        case Ok(md):
+            # just binds 'md'
+            pass
 
-    metadata.check_script_symlinks(name)
+    extras = list(md.extras)
+    name_with_extras = name if not extras else f"{name}{extras}"
+    print("-", name_with_extras)
+
+    md.check_script_symlinks(name)
 
     if verbose:
         rich.print(TAB, metadata)
     else:
         rich.print(
             TAB,
-            f"Installed Version: {metadata.installed_version} on {metadata.python}.",
+            f"Installed Version: {md.installed_version} on {md.python}.",
         )
-        rich.print(TAB, "Scripts:", format_bools(metadata.scripts))
+        rich.print(TAB, "Scripts:", format_bools(md.scripts))
 
 
 def _list_venvs_json():
@@ -90,7 +98,7 @@ def _list_venvs_json():
     print(
         dumps(
             {
-                name: metadata.check_script_symlinks(name).to_dict() if metadata else {}
+                name: metadata.map_or({}, lambda md: md.check_script_symlinks(name).to_dict())
                 for name, metadata in list_packages()
             }
         )
@@ -121,7 +129,7 @@ def runuv(venv: str, ctx: Context):
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def runpip(venv: str, ctx: Context):
     """Run 'pip' in the right venv."""
-    with as_virtualenv(venv) as venv_path:
+    with as_virtualenv(venv):
         run_command("pip", *ctx.args)
 
 

@@ -1,4 +1,5 @@
 """This file contains Logic related to the .metadata file."""
+
 import json
 import sys
 import tempfile
@@ -6,16 +7,20 @@ import typing
 from pathlib import Path
 from typing import Optional
 
-import plumbum
 import msgspec
+import plumbum  # type: ignore
 import threadful
-from packaging.requirements import Requirement, InvalidRequirement
+from packaging.requirements import InvalidRequirement, Requirement
+from result import Err, Ok, is_err
 
-from ._python import _run_python_in_venv
+from ._maybe import Empty, Maybe
 from ._symlinks import check_symlinks
 
 if typing.TYPE_CHECKING:
     from typing_extensions import Self
+
+T = typing.TypeVar("T", bound=typing.Any)
+V = typing.TypeVar("V", bound=typing.Any)
 
 
 class Metadata(msgspec.Struct, array_like=True):
@@ -30,13 +35,21 @@ class Metadata(msgspec.Struct, array_like=True):
     python: str = ""
     python_raw: str = ""
 
-    def _convert_type(self, value: typing.Any) -> typing.Any:
+    @typing.overload
+    def _convert_type(self, value: set[V]) -> list[V]:  # type: ignore
+        """Convert set of V to list of V."""
+
+    @typing.overload
+    def _convert_type(self, value: T) -> T:
+        """Other types are not affected."""
+
+    def _convert_type(self, value: set[V] | T) -> list[V] | T:
         """Make the value JSON-encodable."""
         if isinstance(value, set):
             return list(value)
         return value
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, typing.Any]:
         """Convert the struct to a JSON-safe dictionary."""
         return {f: self._convert_type(getattr(self, f)) for f in self.__struct_fields__}
 
@@ -56,29 +69,28 @@ def fake_install(spec: str) -> dict:
     _python("-m", "uv", "pip", "install", "pip")  # ensure we have pip
 
     with tempfile.NamedTemporaryFile() as f:
-        _python("-m", "pip", "install", "--no-deps", "--dry-run", "--ignore-installed", "--report",
-                f.name, spec)
+        _python("-m", "pip", "install", "--no-deps", "--dry-run", "--ignore-installed", "--report", f.name, spec)
 
         return json.load(f)
 
 
 @threadful.thread
-def resolve_local(spec: str) -> tuple[str | None, str | None]:
+def resolve_local(spec: str) -> tuple[Maybe[str], Maybe[str]]:
     try:
         full_data = fake_install(spec)
         install_data = full_data["install"][0]
 
-        name = install_data['metadata']["name"]
-        extras = install_data.get('requested_extras')
+        name = install_data["metadata"]["name"]
+        extras = install_data.get("requested_extras")
         file_url = install_data["download_info"]["url"]
 
         if extras:
             _extras = ",".join(extras)
-            return f"{name}[{_extras}]", file_url
+            return Ok(f"{name}[{_extras}]"), Ok(file_url)
         else:
             return name, file_url
     except Exception:
-        return None, None
+        return Empty(), Empty()
 
 
 def collect_metadata(spec: str) -> Metadata:
@@ -89,12 +101,14 @@ def collect_metadata(spec: str) -> Metadata:
     except InvalidRequirement as e:
         local, path = threadful.animate(resolve_local(spec), text=f"Trying to install local package '{spec}'")
 
-        if not local or not path:
-            raise e
-
-        parsed_spec = Requirement(local)
-
-        spec = f"{parsed_spec.name} @ {path.removeprefix('file://')}"
+        match local, path:
+            case Ok(_local), Ok(_path):
+                # both ok:
+                parsed_spec = Requirement(_local)
+                spec = f"{parsed_spec.name} @ {_path.removeprefix('file://')}"
+            case _, _:
+                # any err:
+                raise e
 
     return Metadata(
         install_spec=spec,
@@ -113,11 +127,12 @@ def store_metadata(meta: Metadata, venv: Path):
         f.write(encoder.encode(meta))
 
 
-def read_metadata(venv: Path) -> Metadata | None:
+def read_metadata(venv: Path) -> Maybe[Metadata]:
     """Read the .metadata file for a venv."""
     metafile = venv / ".metadata"
     if not metafile.exists():
-        return None
+        return Empty()
 
     with metafile.open("rb") as f:
-        return typing.cast(Metadata, decoder.decode(f.read()))
+        data = decoder.decode(f.read())  # type: Metadata
+        return Ok(data)

@@ -30,6 +30,7 @@ dependencies = [
     "rich",
     "msgspec",
     "packaging",
+    "result",
 ]
 
 [project.optional-dependencies]
