@@ -9,7 +9,7 @@ from typing import Optional
 
 import rich
 import typer
-from result import Err, Ok
+from result import Err, Ok, Result
 from typer import Context
 
 from uvx._constants import BIN_DIR
@@ -31,36 +31,45 @@ from .metadata import Metadata
 app = typer.Typer()
 
 
+def output(result: Result[str, Exception]) -> None:
+    match result:
+        case Ok(msg):
+            rich.print(msg)  # :trash:
+        case Err(err):
+            rich.print(err, file=sys.stderr)
+
+
 @app.command()
 def install(package_name: str, force: bool = False, python: str = ""):
     """Install a package (by pip name)."""
     # todo: support 'install .'
-    install_package(package_name, python=python, force=force)
+    output(install_package(package_name, python=python, force=force))
 
 
 @app.command(name="upgrade")
 @app.command(name="update")
 def upgrade(package_name: str, force: bool = False):
-    upgrade_package(package_name, force=force)
+    output(upgrade_package(package_name, force=force))
 
 
 @app.command(name="remove")
 @app.command(name="uninstall")
 def uninstall(package_name: str, force: bool = False):
     """Uninstall a package (by pip name)."""
-    uninstall_package(package_name, force=force)
+    output(uninstall_package(package_name, force=force).map(lambda version: f"🗑️ {package_name}{version} removed!"))
 
 
 @app.command()
 def reinstall(package: str, python: Optional[str] = None, force: bool = False):
     """Uninstall a package (by pip name) and re-install from the original spec (unless a new spec is supplied)."""
-    reinstall_package(package, python=python, force=force)
+    output(
+        reinstall_package(package, python=python, force=force).map(lambda _: _.replace(" installed", " reinstalled"))
+    )
 
 
 # list
 def _list_short(name: str, metadata: Maybe[Metadata]):
     rich.print("-", name, metadata.map_or("[red]?[/red]", lambda md: md.installed_version))
-    # rich.print("-", name, metadata.installed_version if metadata else "[red]?[/red]")
 
 
 TAB = " " * 3

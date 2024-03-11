@@ -10,7 +10,7 @@ from typing import Optional
 import plumbum  # type: ignore
 import rich
 from plumbum import local  # type: ignore
-from result import Ok
+from result import Err, Ok, Result
 from threadful import thread
 from threadful.bonus import animate
 
@@ -111,7 +111,7 @@ def install_package(
     venv: Optional[Path] = None,
     python: Optional[str] = None,
     force: bool = False,
-):
+) -> Result[str, Exception]:
     """
     Install a package in a virtual environment.
 
@@ -120,7 +120,12 @@ def install_package(
         venv (Optional[Path], optional): The path of the virtual environment. Defaults to None.
         force (bool, optional): If True, overwrites existing package. Defaults to False.
     """
-    meta = collect_metadata(package_name)
+    match collect_metadata(package_name):
+        case Err(e):
+            return Err(e)
+        case Ok(meta):
+            # just bind meta
+            ...
 
     if venv is None:
         venv = create_venv(meta.name, python=python, force=force)
@@ -136,15 +141,17 @@ def install_package(
 
         except plumbum.ProcessExecutionError as e:
             remove_dir(venv)
-            raise e
+            return Err(e)
 
+    msg = ""
     if install_symlinks(meta.name, venv, force=force, meta=meta):
-        rich.print(f"📦 {meta.name} ({meta.installed_version}) installed!")  # :package:
+        msg = f"📦 {meta.name} ({meta.installed_version}) installed!"  # :package:
 
     store_metadata(meta, venv)
+    return Ok(msg)
 
 
-def reinstall_package(package_name: str, python: Optional[str] = None, force: bool = False):
+def reinstall_package(package_name: str, python: Optional[str] = None, force: bool = False) -> Result[str, Exception]:
     """
     Reinstalls a package in a virtual environment.
 
@@ -163,16 +170,23 @@ def reinstall_package(package_name: str, python: Optional[str] = None, force: bo
     Raises:
         SystemExit: If the package is not installed in the virtual environment and force is False.
     """
-    new_metadata = collect_metadata(package_name)
+    match collect_metadata(package_name):
+        case Err(e):
+            # can't work without metadata, just stop
+            return Err(e)
+        case Ok(new_metadata):
+            # bind new_metadata
+            ...
 
     workdir = ensure_local_folder()
     venv = workdir / "venvs" / new_metadata.name
 
     if not venv.exists() and not force:
-        rich.print(
-            f"'{new_metadata.name}' was not previously installed. " f"Please run 'uvx install {package_name}' instead."
+        return Err(
+            ValueError(
+                f"'{new_metadata.name}' was not previously installed. Please run 'uvx install {package_name}' instead."
+            )
         )
-        exit(1)
 
     existing_metadata = read_metadata(venv)
 
@@ -192,7 +206,7 @@ def reinstall_package(package_name: str, python: Optional[str] = None, force: bo
     python = python or existing_metadata.map_or(None, lambda metadata: metadata.python_raw)
 
     uninstall_package(new_metadata.name, force=force)
-    install_package(install_spec, python=python, force=force)
+    return install_package(install_spec, python=python, force=force)
 
 
 def remove_dir(path: Path):
@@ -206,25 +220,32 @@ def remove_dir(path: Path):
         shutil.rmtree(path)
 
 
-def upgrade_package(package_name: str, force: bool = False):
+def upgrade_package(package_name: str, force: bool = False) -> Result[str, Exception]:
     # run `uv pip install --upgrade package` with requested install spec (version, extras, injected)
     # if --force is used, the previous version is ignored.
     print("upgrade", package_name)
 
-    spec_metadata = collect_metadata(package_name)
+    match collect_metadata(package_name):
+        case Err(e):
+            return Err(e)
+        case Ok(spec_metadata):
+            # bind spec_metadata
+            ...
 
     workdir = ensure_local_folder()
     venv = workdir / "venvs" / spec_metadata.name
 
     if not venv.exists():
-        rich.print(
-            f"No virtualenv for '{package_name}', stopping. Use '--force' to remove an executable with that name anyway.",
-            file=sys.stderr,
+        return Err(
+            NotADirectoryError(
+                f"No virtualenv for '{package_name}', stopping. Use '--force' to remove an executable with that name anyway."
+            )
         )
-        exit(1)
+
+    return Ok("todo")
 
 
-def uninstall_package(package_name: str, force: bool = False):
+def uninstall_package(package_name: str, force: bool = False) -> Result[str, Exception]:
     """
     Uninstalls a package.
 
@@ -237,11 +258,11 @@ def uninstall_package(package_name: str, force: bool = False):
 
     if not venv_path.exists() and not force:
         escaped = package_name.replace("[", "\\[")
-        rich.print(
-            f"No virtualenv for '{escaped}', stopping. Use '--force' to remove an executable with that name anyway.",
-            file=sys.stderr,
+        return Err(
+            NotADirectoryError(
+                f"No virtualenv for '{escaped}', stopping. Use '--force' to remove an executable with that name anyway.",
+            )
         )
-        exit(1)
 
     meta = read_metadata(venv_path)
 
@@ -253,7 +274,7 @@ def uninstall_package(package_name: str, force: bool = False):
     remove_dir(venv_path)
 
     _version = meta.map_or("", lambda meta: f" ({meta.installed_version})")
-    rich.print(f"🗑️ {package_name}{_version} removed!")  # :trash:
+    return Ok(_version)
 
 
 def ensure_local_folder() -> Path:

@@ -11,7 +11,7 @@ import msgspec
 import plumbum  # type: ignore
 import threadful
 from packaging.requirements import InvalidRequirement, Requirement
-from result import Ok
+from result import Err, Ok, Result
 
 from ._maybe import Empty, Maybe
 from ._symlinks import check_symlinks
@@ -94,7 +94,7 @@ def resolve_local(spec: str) -> tuple[Maybe[str], Maybe[str]]:
         return Empty(), Empty()
 
 
-def collect_metadata(spec: str) -> Metadata:
+def collect_metadata(spec: str) -> Result[Metadata, InvalidRequirement]:
     """Parse an install spec into a (incomplete) Metadata object."""
     try:
         parsed_spec = Requirement(spec)
@@ -109,16 +109,18 @@ def collect_metadata(spec: str) -> Metadata:
                 spec = f"{parsed_spec.name} @ {_path.removeprefix('file://')}"
             case _, _:
                 # any err:
-                raise e
+                return Err(e)
 
-    return Metadata(
-        install_spec=spec,
-        name=parsed_spec.name,
-        scripts={},  # postponed
-        extras=parsed_spec.extras,
-        requested_version=str(parsed_spec.specifier),
-        installed_version="",  # postponed
-        python="",  # postponed
+    return Ok(
+        Metadata(
+            install_spec=spec,
+            name=parsed_spec.name,
+            scripts={},  # postponed
+            extras=parsed_spec.extras,
+            requested_version=str(parsed_spec.specifier),
+            installed_version="",  # postponed
+            python="",  # postponed
+        )
     )
 
 
