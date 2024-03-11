@@ -109,7 +109,8 @@ def _list_venvs_json():
             {
                 name: metadata.map_or({}, lambda md: md.check_script_symlinks(name).to_dict())
                 for name, metadata in list_packages()
-            }
+            },
+            indent=2
         )
     )
 
