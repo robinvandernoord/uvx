@@ -195,6 +195,23 @@ def remove_dir(path: Path):
     if path.exists():
         shutil.rmtree(path)
 
+def upgrade_package(package_name: str, force: bool = False):
+    # run `uv pip install --upgrade package` with requested install spec (version, extras, injected)
+    # if --force is used, the previous version is ignored.
+    print('upgrade', package_name)
+
+    spec_metadata = collect_metadata(package_name)
+
+    workdir = ensure_local_folder()
+    venv = workdir / "venvs" / spec_metadata.name
+
+    if not venv.exists():
+        rich.print(
+            f"No virtualenv for '{package_name}', stopping. Use '--force' to remove an executable with that name anyway.",
+            file=sys.stderr,
+        )
+        exit(1)
+
 
 def uninstall_package(package_name: str, force: bool = False):
     """

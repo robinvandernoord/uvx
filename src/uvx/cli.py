@@ -7,7 +7,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-import plumbum  # type: ignore
 import rich
 import typer
 from typer import Context
@@ -23,6 +22,7 @@ from .core import (
     reinstall_package,
     run_command,
     uninstall_package,
+    upgrade_package,
 )
 from .metadata import Metadata
 
@@ -35,6 +35,11 @@ def install(package_name: str, force: bool = False, python: str = ""):
     # todo: support 'install .'
     install_package(package_name, python=python, force=force)
 
+
+@app.command(name="upgrade")
+@app.command(name="update")
+def upgrade(package_name: str, force: bool = False):
+    upgrade_package(package_name, force=force)
 
 @app.command(name="remove")
 @app.command(name="uninstall")
@@ -127,8 +132,6 @@ def runpython(venv: str, ctx: Context):
         python = venv_path / "bin" / "python"
         subprocess.run([python, *ctx.args])  # nosec
 
-
-# upgrade
 
 # self-upgrade (uv and uvx)
 
