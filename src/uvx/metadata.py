@@ -1,19 +1,18 @@
 """This file contains Logic related to the .metadata file."""
 
 import json
-import sys
 import tempfile
 import typing
 from pathlib import Path
 from typing import Optional
 
 import msgspec
-import plumbum  # type: ignore
 import threadful
 from packaging.requirements import InvalidRequirement, Requirement
 from result import Err, Ok, Result
 
 from ._maybe import Empty, Maybe
+from ._python import _pip, _uv
 from ._symlinks import check_symlinks
 
 if typing.TYPE_CHECKING:
@@ -65,12 +64,10 @@ decoder = msgspec.msgpack.Decoder(type=Metadata)
 
 
 def fake_install(spec: str) -> dict:
-    _python = plumbum.local[sys.executable]
-
-    _python("-m", "uv", "pip", "install", "pip")  # ensure we have pip
+    _uv("pip", "install", "pip")  # ensure we have pip
 
     with tempfile.NamedTemporaryFile() as f:
-        _python("-m", "pip", "install", "--no-deps", "--dry-run", "--ignore-installed", "--report", f.name, spec)
+        _pip("install", "--no-deps", "--dry-run", "--ignore-installed", "--report", f.name, spec)
 
         return json.load(f)
 

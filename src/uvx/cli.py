@@ -16,6 +16,7 @@ from uvx._constants import BIN_DIR
 
 from .__about__ import __version__
 from ._maybe import Maybe
+from ._python import _python_in_venv, _uv
 from .core import (
     as_virtualenv,
     format_bools,
@@ -132,8 +133,8 @@ def list_venvs(short: bool = False, verbose: bool = False, json: bool = False):
 def runuv(venv: str, ctx: Context):
     """Run 'uv' in the right venv."""
     with as_virtualenv(venv) as venv_path:
-        python = venv_path / "bin" / "python"
-        run_command(str(python), "-m", "uv", *ctx.args)
+        python = _python_in_venv(venv_path)
+        run_command(str(python), "-m", "uv", *ctx.args)  # run_command does not work with _uv_in_venv !
 
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
@@ -195,7 +196,7 @@ def completions():  # noqa
 def version_callback():
     """Show the current versions when running with --version."""
     rich.print("uvx", __version__)
-    run_command(sys.executable, "-m", "uv", "--version", printfn=rich.print)
+    run_command(str(_uv), "--version", printfn=rich.print)
     rich.print("Python", sys.version.split(" ")[0])
 
 

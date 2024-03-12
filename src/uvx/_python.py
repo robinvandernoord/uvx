@@ -4,14 +4,28 @@ from pathlib import Path
 
 import plumbum  # type: ignore
 from plumbum.cmd import grep  # type: ignore
+from plumbum.machines.local import LocalCommand  # type: ignore
+from uv import find_uv_bin
 
-_uv = plumbum.local[sys.executable]["-m", "uv"]
+_python = plumbum.local[sys.executable]
+_pip = _python["-m", "pip"]
+_uv = plumbum.local[find_uv_bin()]
+
+
+def _python_in_venv(venv: Path) -> LocalCommand:
+    python = venv / "bin" / "python"
+    return plumbum.local[python]
+
+
+def _uv_in_venv(venv: Path):
+    python = _python_in_venv(venv)
+    return python["-m", "uv"]
 
 
 def _run_python_in_venv(*args: str, venv: Path) -> str:
-    python = venv / "bin" / "python"
+    python = _python_in_venv(venv)
 
-    return plumbum.local[python](*args)
+    return python(*args)
 
 
 def run_python_code_in_venv(code: str, venv: Path) -> str:
@@ -36,15 +50,15 @@ def get_python_version(venv: Path):
 
 def get_python_executable(venv: Path):
     """Get the Python executable for a venv (used to determine the version)."""
-    executable = venv / "bin" / "python"
+    executable = venv / "bin" / "python"  # DON'T use _python_in_venv because we want to resolve the symlink:
     return str(executable.resolve())  # /usr/bin/python3.xx
 
 
 def get_package_version(package: str, venv: Path) -> str:
     """Get the currently installed version of a specific package."""
     # assumes `with virtualenv(venv)` block executing this function
-    python = venv / "bin" / "python"
+    uv = _uv_in_venv(venv)
 
     regex = f"^({package}==|{package} @)"
-    line: str = (plumbum.local[python]["-m", "uv"]["pip", "freeze"] | grep["-E", regex])().strip()
+    line: str = (uv["pip", "freeze"] | grep["-E", regex])().strip()
     return (line.split("@")[-1] if "@" in line else line.split("==")[-1]).strip()
