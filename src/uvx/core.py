@@ -211,6 +211,23 @@ def reinstall_package(package_name: str, python: Optional[str] = None, force: bo
     return install_package(install_spec, python=python, force=force)
 
 
+def inject_packages(into: str, package_specs: list[str]) -> Result[str, Exception]:
+    match collect_metadata(into):
+        case Err(e):
+            return Err(e)
+        case Ok(meta):
+            # just bind meta
+            ...
+
+    workdir = ensure_local_folder()
+    venv = workdir / "venvs" / meta.name
+
+    if not venv.exists():
+        return Err(ValueError(f"'{meta.name}' was not previously installed. Please run 'uvx install {into}' first."))
+
+    return Ok(f"todo in {meta}")
+
+
 def remove_dir(path: Path):
     """
     Remove a directory.

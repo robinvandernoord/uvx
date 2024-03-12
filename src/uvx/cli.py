@@ -20,6 +20,7 @@ from ._python import _python_in_venv, _uv
 from .core import (
     as_virtualenv,
     format_bools,
+    inject_packages,
     install_package,
     list_packages,
     reinstall_package,
@@ -65,6 +66,16 @@ def reinstall(package: str, python: Optional[str] = None, force: bool = False):
     """Uninstall a package (by pip name) and re-install from the original spec (unless a new spec is supplied)."""
     output(
         reinstall_package(package, python=python, force=force).map(lambda _: _.replace(" installed", " reinstalled"))
+    )
+
+
+@app.command()
+def inject(into: str, package_specs: list[str]):
+    output(
+        inject_packages(
+            into,
+            package_specs,
+        )
     )
 
 
@@ -153,8 +164,6 @@ def runpython(venv: str, ctx: Context):
 
 
 # self-upgrade (uv and uvx)
-
-# inject
 
 # ...
 
