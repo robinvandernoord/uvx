@@ -110,6 +110,9 @@ def _list_normal(name: str, metadata: Maybe[Metadata], verbose: bool = False):
             TAB,
             f"Installed Version: {md.installed_version} on {md.python}.",
         )
+        if md.injected:
+            p = ", ".join([f"'{_}'" for _ in md.injected])
+            rich.print(TAB, f"Injected Packages: {p}")
         rich.print(TAB, "Scripts:", format_bools(md.scripts))
 
 

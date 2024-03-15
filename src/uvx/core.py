@@ -225,7 +225,23 @@ def inject_packages(into: str, package_specs: list[str]) -> Result[str, Exceptio
     if not venv.exists():
         return Err(ValueError(f"'{meta.name}' was not previously installed. Please run 'uvx install {into}' first."))
 
-    return Ok(f"todo in {meta}")
+    # after getting the right venv, load actual metadata (with fallback to previous emptier metadata):
+    meta = read_metadata(venv).unwrap_or(meta)
+
+    with virtualenv(venv), exit_on_pb_error():
+        try:
+            animate(uv("pip", "install", *package_specs), text=f"injecting {package_specs}")
+        except plumbum.ProcessExecutionError as e:
+            return Err(e)
+
+    # todo: update metadata
+    meta.injected = (meta.injected or []) + package_specs
+
+    print(f"{meta = }")
+
+    store_metadata(meta, venv)
+
+    return Ok(f"💉 Injected {package_specs} into {meta.name}.")  # :needle:
 
 
 def remove_dir(path: Path):
