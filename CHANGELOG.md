@@ -2,6 +2,24 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.0 (2024-03-19)
+
+### Feature
+
+* Continued `inject` cli functionality ([`ffd3792`](https://github.com/robinvandernoord/uvx/commit/ffd37920eec3f73afe5c2456904cfe590c004615))
+* Started on 'inject' ([`7af0558`](https://github.com/robinvandernoord/uvx/commit/7af05585ddf711217a8213013cbcb67c4caa0f00))
+* Prepare for 'inject' ([`bd07b9a`](https://github.com/robinvandernoord/uvx/commit/bd07b9a15f278bda0bed119bfe7bb4fec8e60b32))
+* Started with `uvx upgrade` ([`2d68e14`](https://github.com/robinvandernoord/uvx/commit/2d68e14e5677ffcaf8ce1db6ebfa55d00dd0077f))
+
+### Fix
+
+* **reinstall:** Still include injected ([`80cfb18`](https://github.com/robinvandernoord/uvx/commit/80cfb1865b6de9c4b34b9eae3eb627136431858a))
+* Make local install work again ([`945edf7`](https://github.com/robinvandernoord/uvx/commit/945edf7d3e7e5b996596c891871b9e9816e2151a))
+* **json:** Indent json with 2 ([`ce55dd0`](https://github.com/robinvandernoord/uvx/commit/ce55dd01e1003d0f370d66c27177cfbf33f1bb98))
+* Metadata to msgpack, allow local install ([`1880062`](https://github.com/robinvandernoord/uvx/commit/18800624ddeeb80946f6022f065628909a8d0a3e))
+* Improvements in uv binary detection (right venv) ([`e874d3f`](https://github.com/robinvandernoord/uvx/commit/e874d3fbfa9703c9f0c7b2f500e0e78bddb4b9ce))
+* (WIP) try to resolve local packages by dry-run installing them ([`2f2a780`](https://github.com/robinvandernoord/uvx/commit/2f2a78056659cf8c6dcfd287917251e0afcf2431))
+
 ## v0.4.1 (2024-03-04)
 
 ### Fix
