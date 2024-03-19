@@ -42,16 +42,16 @@ def output(result: Result[str, Exception]) -> None:
 
 
 @app.command()
-def install(package_name: str, force: bool = False, python: str = ""):
+def install(package_name: str, force: bool = False, python: str = "", no_cache: bool = False):
     """Install a package (by pip name)."""
     # todo: support 'install .'
-    output(install_package(package_name, python=python, force=force))
+    output(install_package(package_name, python=python, force=force, no_cache=no_cache))
 
 
 @app.command(name="upgrade")
 @app.command(name="update")
-def upgrade(package_name: str, force: bool = False):
-    output(upgrade_package(package_name, force=force))
+def upgrade(package_name: str, force: bool = False, skip_injected: bool = False, no_cache: bool = False):
+    output(upgrade_package(package_name, force=force, skip_injected=skip_injected, no_cache=no_cache))
 
 
 @app.command(name="remove")
@@ -62,7 +62,13 @@ def uninstall(package_name: str, force: bool = False):
 
 
 @app.command()
-def reinstall(package: str, python: Optional[str] = None, force: bool = False, without_injected: bool = False):
+def reinstall(
+    package: str,
+    python: Optional[str] = None,
+    force: bool = False,
+    without_injected: bool = False,
+    no_cache: bool = False,
+):
     """Uninstall a package (by pip name) and re-install from the original spec (unless a new spec is supplied)."""
     output(
         reinstall_package(
@@ -70,6 +76,7 @@ def reinstall(package: str, python: Optional[str] = None, force: bool = False, w
             python=python,
             force=force,
             with_injected=not without_injected,
+            no_cache=no_cache,
         ).map(lambda _: _.replace(" installed", " reinstalled"))
     )
 

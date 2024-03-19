@@ -112,6 +112,7 @@ def install_package(
     python: Optional[str] = None,
     force: bool = False,
     extras: Optional[list[str]] = None,
+    no_cache: bool = False,
 ) -> Result[str, Exception]:
     """
     Install a package in a virtual environment.
@@ -138,10 +139,16 @@ def install_package(
 
     with virtualenv(venv), exit_on_pb_error():
         try:
+            args = []
             text = f"installing {meta.name}"
             if extras:
+                args.extend(extras)
                 text += f" with {extras}"
-            animate(uv("pip", "install", meta.install_spec, *extras), text=text)
+
+            if no_cache:
+                args += ["--no-cache"]
+
+            animate(uv("pip", "install", meta.install_spec, *args), text=text)
 
             # must still be in the venv for these:
             meta.installed_version = get_package_version(meta.name, venv)
@@ -162,7 +169,11 @@ def install_package(
 
 
 def reinstall_package(
-    package_name: str, python: Optional[str] = None, force: bool = False, with_injected: bool = True
+    package_name: str,
+    python: Optional[str] = None,
+    force: bool = False,
+    with_injected: bool = True,
+    no_cache: bool = False,
 ) -> Result[str, Exception]:
     """
     Reinstalls a package in a virtual environment.
@@ -207,6 +218,7 @@ def reinstall_package(
     new_install_spec = bool(new_metadata.requested_version or new_metadata.extras)
 
     # install_spec = package_name if new_install_spec or not existing_metadata else existing_metadata.install_spec
+    metadata: Optional[Metadata] = None
     match (new_install_spec, existing_metadata):
         case (False, Ok(metadata)):
             install_spec = metadata.install_spec
@@ -219,7 +231,7 @@ def reinstall_package(
 
     uninstall_package(new_metadata.name, force=force)
     extras = metadata.injected if (with_injected and metadata and metadata.injected) else []
-    return install_package(install_spec, python=python, force=force, extras=extras)
+    return install_package(install_spec, python=python, force=force, extras=extras, no_cache=no_cache)
 
 
 def inject_packages(into: str, package_specs: list[str]) -> Result[str, Exception]:
@@ -262,7 +274,9 @@ def remove_dir(path: Path):
         shutil.rmtree(path)
 
 
-def upgrade_package(package_name: str, force: bool = False) -> Result[str, Exception]:
+def upgrade_package(
+    package_name: str, force: bool = False, skip_injected: bool = False, no_cache: bool = False
+) -> Result[str, Exception]:
     # run `uv pip install --upgrade package` with requested install spec (version, extras, injected)
     # if --force is used, the previous version is ignored.
     print("upgrade", package_name)
