@@ -62,10 +62,15 @@ def uninstall(package_name: str, force: bool = False):
 
 
 @app.command()
-def reinstall(package: str, python: Optional[str] = None, force: bool = False):
+def reinstall(package: str, python: Optional[str] = None, force: bool = False, without_injected: bool = False):
     """Uninstall a package (by pip name) and re-install from the original spec (unless a new spec is supplied)."""
     output(
-        reinstall_package(package, python=python, force=force).map(lambda _: _.replace(" installed", " reinstalled"))
+        reinstall_package(
+            package,
+            python=python,
+            force=force,
+            with_injected=not without_injected,
+        ).map(lambda _: _.replace(" installed", " reinstalled"))
     )
 
 

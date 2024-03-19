@@ -111,6 +111,7 @@ def install_package(
     venv: Optional[Path] = None,
     python: Optional[str] = None,
     force: bool = False,
+    extras: Optional[list[str]] = None,
 ) -> Result[str, Exception]:
     """
     Install a package in a virtual environment.
@@ -120,6 +121,9 @@ def install_package(
         venv (Optional[Path], optional): The path of the virtual environment. Defaults to None.
         force (bool, optional): If True, overwrites existing package. Defaults to False.
     """
+    if extras is None:
+        extras = []
+
     match collect_metadata(package_name):
         case Err(e):
             return Err(e)
@@ -134,12 +138,16 @@ def install_package(
 
     with virtualenv(venv), exit_on_pb_error():
         try:
-            animate(uv("pip", "install", meta.install_spec), text=f"installing {meta.name}")
+            text = f"installing {meta.name}"
+            if extras:
+                text += f" with {extras}"
+            animate(uv("pip", "install", meta.install_spec, *extras), text=text)
 
             # must still be in the venv for these:
             meta.installed_version = get_package_version(meta.name, venv)
             meta.python = get_python_version(venv)
             meta.python_raw = get_python_executable(venv)
+            meta.injected = extras
 
         except plumbum.ProcessExecutionError as e:
             remove_dir(venv)
@@ -153,7 +161,9 @@ def install_package(
     return Ok(msg)
 
 
-def reinstall_package(package_name: str, python: Optional[str] = None, force: bool = False) -> Result[str, Exception]:
+def reinstall_package(
+    package_name: str, python: Optional[str] = None, force: bool = False, with_injected: bool = True
+) -> Result[str, Exception]:
     """
     Reinstalls a package in a virtual environment.
 
@@ -208,7 +218,8 @@ def reinstall_package(package_name: str, python: Optional[str] = None, force: bo
     python = python or existing_metadata.map_or(None, lambda metadata: metadata.python_raw)
 
     uninstall_package(new_metadata.name, force=force)
-    return install_package(install_spec, python=python, force=force)
+    extras = metadata.injected if (with_injected and metadata and metadata.injected) else []
+    return install_package(install_spec, python=python, force=force, extras=extras)
 
 
 def inject_packages(into: str, package_specs: list[str]) -> Result[str, Exception]:
@@ -234,11 +245,7 @@ def inject_packages(into: str, package_specs: list[str]) -> Result[str, Exceptio
         except plumbum.ProcessExecutionError as e:
             return Err(e)
 
-    # todo: update metadata
     meta.injected = (meta.injected or []) + package_specs
-
-    print(f"{meta = }")
-
     store_metadata(meta, venv)
 
     return Ok(f"💉 Injected {package_specs} into {meta.name}.")  # :needle:
