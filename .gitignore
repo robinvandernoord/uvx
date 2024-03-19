@@ -5,3 +5,5 @@ build/
 *.egg-info
 coverage.*
 .coverage
+venv*
+.env
