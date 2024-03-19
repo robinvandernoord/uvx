@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.2 (2024-03-19)
+
+### Fix
+
+* Exclude these files from pip build ([`0899653`](https://github.com/robinvandernoord/uvx/commit/08996536a64b78680d2cf8e452ee3e871a610464))
+
 ## v0.5.1 (2024-03-19)
 
 ### Fix
