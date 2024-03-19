@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.1 (2024-03-19)
+
+### Fix
+
+* Include --no-cache for (re)install ([`8ab4de9`](https://github.com/robinvandernoord/uvx/commit/8ab4de9487d7eac7e68632805c8b42190bc2c0a5))
+
 ## v0.5.0 (2024-03-19)
 
 ### Feature
