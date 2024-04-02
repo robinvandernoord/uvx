@@ -234,7 +234,7 @@ def reinstall_package(
     return install_package(install_spec, python=python, force=force, extras=extras, no_cache=no_cache)
 
 
-def inject_packages(into: str, package_specs: list[str]) -> Result[str, Exception]:
+def inject_packages(into: str, package_specs: set[str]) -> Result[str, Exception]:
     match collect_metadata(into):
         case Err(e):
             return Err(e)
@@ -257,7 +257,7 @@ def inject_packages(into: str, package_specs: list[str]) -> Result[str, Exceptio
         except plumbum.ProcessExecutionError as e:
             return Err(e)
 
-    meta.injected = (meta.injected or []) + package_specs
+    meta.injected = (meta.injected or set()) | package_specs
     store_metadata(meta, venv)
 
     return Ok(f"💉 Injected {package_specs} into {meta.name}.")  # :needle:
@@ -292,13 +292,35 @@ def upgrade_package(
     venv = workdir / "venvs" / spec_metadata.name
 
     if not venv.exists():
-        return Err(
-            NotADirectoryError(
-                f"No virtualenv for '{package_name}', stopping. Use '--force' to remove an executable with that name anyway."
-            )
-        )
+        return Err(NotADirectoryError(f"No virtualenv for '{package_name}', stopping. Use 'uvx install' instead."))
 
-    return Ok("todo")
+    meta = read_metadata(venv).unwrap_or(spec_metadata)
+
+    with virtualenv(venv), exit_on_pb_error():
+        # pip upgrade package[extras]==version *injected
+        # if version spec in spec_metadata use that instead
+        # if --force, drop version spec
+        base_pkg = meta.name
+        extras = meta.extras
+        injected = [] if skip_injected else meta.injected
+        version = spec_metadata.requested_version or ("" if force else meta.requested_version)
+        options = []
+        if force:
+            options.append("--no-cache")
+
+        upgrade_spec = base_pkg + version
+        if extras:
+            upgrade_spec += "[" + ",".join(extras) + "]"
+
+        # todo: get version before and after
+
+        try:
+            print("pip", "install", "--upgrade", upgrade_spec, *injected, *options)
+            # animate(uv("pip", "install", "--upgrade", upgrade_spec, *injected, *options), text=f"upgrading {base_pkg}")
+        except plumbum.ProcessExecutionError as e:
+            return Err(e)
+
+    return Ok("TODO: upgraded or the same msg")
 
 
 def uninstall_package(package_name: str, force: bool = False) -> Result[str, Exception]:

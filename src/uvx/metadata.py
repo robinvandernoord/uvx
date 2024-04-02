@@ -33,7 +33,7 @@ class Metadata(msgspec.Struct, array_like=True):
     installed_version: str
     python: str = ""
     python_raw: str = ""
-    injected: Optional[list[str]] = None
+    injected: Optional[set[str]] = None
 
     @typing.overload
     def _convert_type(self, value: set[V]) -> list[V]:  # type: ignore

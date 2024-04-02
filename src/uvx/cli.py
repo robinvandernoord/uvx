@@ -86,7 +86,7 @@ def inject(into: str, package_specs: list[str]):
     output(
         inject_packages(
             into,
-            package_specs,
+            set(package_specs),
         )
     )
 
