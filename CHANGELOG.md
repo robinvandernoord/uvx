@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.0 (2024-04-05)
+
+### Feature
+
+* Implemented  first version of `uvx upgrade` ([`ffcb73a`](https://github.com/robinvandernoord/uvx/commit/ffcb73ad928f089ef3c0c3705b00fc04c840c9ff))
+* Work in progress on uvx upgrade ([`d48524a`](https://github.com/robinvandernoord/uvx/commit/d48524adf5a9a08ae4d4b8485789ff33e937f278))
+
 ## v0.5.2 (2024-03-19)
 
 ### Fix
