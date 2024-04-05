@@ -178,9 +178,9 @@ def runpython(venv: str, ctx: Context):
         subprocess.run([python, *ctx.args])  # nosec
 
 
+# todo:
 # self-upgrade (uv and uvx)
-
-# ...
+# upgrade-all
 
 
 def add_to_bashrc(text: str, with_comment: bool = True):

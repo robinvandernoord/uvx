@@ -279,8 +279,6 @@ def upgrade_package(
 ) -> Result[str, Exception]:
     # run `uv pip install --upgrade package` with requested install spec (version, extras, injected)
     # if --force is used, the previous version is ignored.
-    print("upgrade", package_name)
-
     match collect_metadata(package_name):
         case Err(e):
             return Err(e)
@@ -296,13 +294,15 @@ def upgrade_package(
 
     meta = read_metadata(venv).unwrap_or(spec_metadata)
 
+    old_version = meta.installed_version
+
     with virtualenv(venv), exit_on_pb_error():
         # pip upgrade package[extras]==version *injected
         # if version spec in spec_metadata use that instead
         # if --force, drop version spec
         base_pkg = meta.name
         extras = meta.extras
-        injected = [] if skip_injected else meta.injected
+        injected = [] if skip_injected else (meta.injected or [])
         version = spec_metadata.requested_version or ("" if force else meta.requested_version)
         options = []
         if force:
@@ -312,15 +312,25 @@ def upgrade_package(
         if extras:
             upgrade_spec += "[" + ",".join(extras) + "]"
 
-        # todo: get version before and after
-
         try:
-            print("pip", "install", "--upgrade", upgrade_spec, *injected, *options)
-            # animate(uv("pip", "install", "--upgrade", upgrade_spec, *injected, *options), text=f"upgrading {base_pkg}")
+            animate(uv("pip", "install", "--upgrade", upgrade_spec, *injected, *options), text=f"upgrading {base_pkg}")
         except plumbum.ProcessExecutionError as e:
             return Err(e)
 
-    return Ok("TODO: upgraded or the same msg")
+        meta.requested_version = version
+        new_version = meta.installed_version = get_package_version(meta.name, venv)
+        store_metadata(meta, venv)
+
+    if old_version == new_version:
+        # todo: if meta.requested_version - warn
+        msg = f"🌟 '{package_name}' is already up to date at version {new_version}!"
+        if meta.requested_version:
+            msg += f"\n💡 This package was installed with a version constraint ({meta.requested_version}). If you want to ignore this constraint, use `uvx upgrade --force {package_name}`."
+
+    else:
+        msg = f"🚀 Successfully updated '{package_name}' from version {old_version} to version {new_version}!"
+
+    return Ok(msg)
 
 
 def uninstall_package(package_name: str, force: bool = False) -> Result[str, Exception]:
