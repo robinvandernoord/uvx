@@ -120,7 +120,10 @@ def install_package(
     Args:
         package_name (str): The name of the package.
         venv (Optional[Path], optional): The path of the virtual environment. Defaults to None.
+        python (str): version or executable to use.
         force (bool, optional): If True, overwrites existing package. Defaults to False.
+        extras: which optional features ('extras') to install for this package.
+        no_cache: don't use `uv` cache.
     """
     if extras is None:
         extras = []
@@ -135,8 +138,6 @@ def install_package(
     if venv is None:
         venv = create_venv(meta.name, python=python, force=force)
 
-    # todo: make --force use --no-cache
-
     with virtualenv(venv), exit_on_pb_error():
         args: list[str] = []
         text = f"installing {meta.name}"
@@ -144,7 +145,7 @@ def install_package(
             args.extend(extras)
             text += f" with {extras}"
 
-        if no_cache:
+        if no_cache or force:
             args += ["--no-cache"]
 
         try:
@@ -189,6 +190,8 @@ def reinstall_package(
         package_name (str): The name of the package to reinstall.
         python (Optional[str], optional): The Python version to use for the virtual environment. Defaults to None.
         force (bool, optional): If True, ignores if the virtual environment does not exist. Defaults to False.
+        with_injected (bool): also re-include injected packages?
+        no_cache: don't use `uv` cache.
 
     Raises:
         SystemExit: If the package is not installed in the virtual environment and force is False.
@@ -227,7 +230,7 @@ def reinstall_package(
             install_spec = package_name
 
     # python = python or (existing_metadata.python_raw if existing_metadata else None)
-    python = python or existing_metadata.map_or(None, lambda metadata: metadata.python_raw)
+    python = python or existing_metadata.map_or(None, lambda m: m.python_raw)
 
     uninstall_package(new_metadata.name, force=force)
     extras = metadata.injected if (with_injected and metadata and metadata.injected) else []
@@ -329,10 +332,10 @@ def upgrade_package(
         store_metadata(meta, venv)
 
     if old_version == new_version:
-        # todo: if meta.requested_version - warn
         msg = f"🌟 '{package_name}' is already up to date at version {new_version}!"
         if meta.requested_version:
-            msg += f"\n💡 This package was installed with a version constraint ({meta.requested_version}). If you want to ignore this constraint, use `uvx upgrade --force {package_name}`."
+            msg += (f"\n💡 This package was installed with a version constraint ({meta.requested_version}). "
+                    f"If you want to ignore this constraint, use `uvx upgrade --force {package_name}`.")
 
     else:
         msg = f"🚀 Successfully updated '{package_name}' from version {old_version} to version {new_version}!"
@@ -355,7 +358,8 @@ def uninstall_package(package_name: str, force: bool = False) -> Result[str, Exc
         escaped = package_name.replace("[", "\\[")
         return Err(
             NotADirectoryError(
-                f"No virtualenv for '{escaped}', stopping. Use '--force' to remove an executable with that name anyway.",
+                f"No virtualenv for '{escaped}', stopping. "
+                f"Use '--force' to remove an executable with that name anyway.",
             )
         )
 
@@ -368,7 +372,7 @@ def uninstall_package(package_name: str, force: bool = False) -> Result[str, Exc
 
     remove_dir(venv_path)
 
-    _version = meta.map_or("", lambda meta: f" ({meta.installed_version})")
+    _version = meta.map_or("", lambda m: f" ({m.installed_version})")
     return Ok(_version)
 
 
@@ -391,6 +395,7 @@ def create_venv(name: str, python: Optional[str] = None, force: bool = False, wi
         name (str): The name of the virtual environment.
         python (str): which version of Python to use (e.g. 3.11, python3.11)
         force (bool): ignore existing venv
+        with_pip (bool): also install (regular) pip into the venv? (required for `uvx runpip`)
 
     Returns:
         Path: The path of the virtual environment.
