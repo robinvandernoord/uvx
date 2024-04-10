@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.9.0 (2024-04-10)
+
+### Feature
+
+* Added `uvx self-update` ([`986c7b5`](https://github.com/robinvandernoord/uvx/commit/986c7b55fda215ff877e256e5c88b2f4c3882245))
+
 ## v0.8.0 (2024-04-10)
 
 ### Feature
