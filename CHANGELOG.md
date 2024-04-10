@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.0 (2024-04-10)
+
+### Feature
+
+* `uvx upgrade-all` ([`5edc7af`](https://github.com/robinvandernoord/uvx/commit/5edc7afeda4bb544b346f962a730f66c6b92dbf8))
+
+### Fix
+
+* Make linters etc happy ([`bc16251`](https://github.com/robinvandernoord/uvx/commit/bc16251ac58221131f1192ea78fc95f80650421f))
+
 ## v0.6.0 (2024-04-05)
 
 ### Feature
