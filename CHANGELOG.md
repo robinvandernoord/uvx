@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.0 (2024-04-10)
+
+### Feature
+
+* Added `--verbose` flag to global state (+ used by --verbose) ([`8c20be4`](https://github.com/robinvandernoord/uvx/commit/8c20be4c82a8ecd8abe9d7e8615c3da28304c8b4))
+
+### Fix
+
+* Work in progress on `self-update` ([`56dec48`](https://github.com/robinvandernoord/uvx/commit/56dec48a0abb7b32efab5e4e10a034e383b36eb9))
+
 ## v0.7.0 (2024-04-10)
 
 ### Feature
