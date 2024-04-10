@@ -4,7 +4,9 @@
 
 ## v0.9.1 (2024-04-10)
 
+### Fix
 
+* NOOP patch to test self-update
 
 ## v0.9.0 (2024-04-10)
 
