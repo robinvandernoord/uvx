@@ -1,5 +1,6 @@
 """This file builds the Typer cli."""
 
+import functools
 import os
 import subprocess  # nosec
 import sys
@@ -15,6 +16,7 @@ from typer import Context
 from uvx._constants import BIN_DIR
 
 from .__about__ import __version__
+from ._cli_support import State
 from ._maybe import Maybe
 from ._python import _python_in_venv, _uv
 from .core import (
@@ -31,6 +33,7 @@ from .core import (
 from .metadata import Metadata
 
 app = typer.Typer()
+state = State()
 
 
 def output(result: Result[str, Exception]) -> None:
@@ -129,6 +132,7 @@ def inject(into: str, package_specs: list[str]):
 # self-upgrade (uv and uvx)
 # upgrade-all
 
+
 @app.command()
 def upgrade_all(
     force: Annotated[bool, typer.Option("-f", "--force", help="Ignore previous version constraint")] = False,
@@ -138,14 +142,8 @@ def upgrade_all(
     no_cache: Annotated[bool, typer.Option("--no-cache", help="Run without `uv` cache")] = False,
 ):
     """Upgrade all uvx-installed packages."""
-
-    for (venv_name, _) in list_packages():
-        upgrade(
-            venv_name,
-            force=force,
-            skip_injected=skip_injected,
-            no_cache=no_cache
-        )
+    for venv_name, _ in list_packages():
+        upgrade(venv_name, force=force, skip_injected=skip_injected, no_cache=no_cache)
 
 
 # list
@@ -202,6 +200,8 @@ def _list_venvs_json():
 @app.command(name="list")
 def list_venvs(short: bool = False, verbose: bool = False, json: bool = False):
     """List packages and apps installed with uvx."""
+    verbose = verbose or state.verbose
+
     if json:
         return _list_venvs_json()
 
@@ -271,14 +271,21 @@ def completions():  # noqa
 
 def version_callback():
     """Show the current versions when running with --version."""
-    rich.print("uvx", __version__)
-    run_command(str(_uv), "--version", printfn=rich.print)
-    rich.print("Python", sys.version.split(" ")[0])
+    if state.verbose:
+        rich.print("uvx", __version__, sys.argv[0])
+        run_command(str(_uv), "--version", printfn=functools.partial(rich.print, end=" "))
+        rich.print(str(_uv))
+        rich.print("Python", sys.version.split(" ")[0], sys.executable)
+    else:
+        rich.print("uvx", __version__)
+        run_command(str(_uv), "--version", printfn=rich.print)
+        rich.print("Python", sys.version.split(" ")[0])
 
 
 @app.callback(invoke_without_command=True, no_args_is_help=True)
 def main(
     ctx: typer.Context,
+    verbose: bool = False,
     # stops the program:
     version: bool = False,
 ) -> None:  # noqa
@@ -287,10 +294,12 @@ def main(
 
     Args:
         ctx: context to determine if a subcommand is passed, etc
-
+        verbose: show more info in supported subcommands?
         version: display current version?
 
     """
+    state.verbose = verbose
+
     if version:
         version_callback()
     elif not ctx.invoked_subcommand:

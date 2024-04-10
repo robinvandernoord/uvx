@@ -334,8 +334,10 @@ def upgrade_package(
     if old_version == new_version:
         msg = f"🌟 '{package_name}' is already up to date at version {new_version}!"
         if meta.requested_version:
-            msg += (f"\n💡 This package was installed with a version constraint ({meta.requested_version}). "
-                    f"If you want to ignore this constraint, use `uvx upgrade --force {package_name}`.")
+            msg += (
+                f"\n💡 This package was installed with a version constraint ({meta.requested_version}). "
+                f"If you want to ignore this constraint, use `uvx upgrade --force {package_name}`."
+            )
 
     else:
         msg = f"🚀 Successfully updated '{package_name}' from version {old_version} to version {new_version}!"
