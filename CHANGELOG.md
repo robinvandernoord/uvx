@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.9.4 (2024-04-10)
+
+### Fix
+
+* Added icons to self-update, included new TODO ([`637b21b`](https://github.com/robinvandernoord/uvx/commit/637b21b5c859848fa62ef4dabbdc38834b51b555))
+
 ## v0.9.3 (2024-04-10)
 
 ### Fix
