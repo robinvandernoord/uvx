@@ -166,11 +166,11 @@ def _self_update_via_cmd(pip_ish: BoundCommand, with_uv: bool):
 
 
 def _self_update_via_uv(with_uv: bool):
-    return _self_update_via_cmd(_uv["pip"], with_uv=with_uv)
+    return _self_update_via_cmd(_uv["pip", "--no-cache"], with_uv=with_uv)
 
 
 def _self_update_via_pip(with_uv: bool):
-    return _self_update_via_cmd(_pip, with_uv=with_uv)
+    return _self_update_via_cmd(_pip["--no-cache-dir"], with_uv=with_uv)
 
 
 @app.command()
@@ -184,13 +184,13 @@ def self_update(
     try:
         if os.getenv("VIRTUAL_ENV"):
             # already activated venv
-            new, old = _self_update_via_uv(with_uv=with_uv)
+            old, new = _self_update_via_uv(with_uv=with_uv)
         elif sys.prefix != sys.base_prefix:
             # venv-like environment (pipx, uvx)
             with local.env(VIRTUAL_ENV=sys.prefix):
-                new, old = _self_update_via_uv(with_uv=with_uv)
+                old, new = _self_update_via_uv(with_uv=with_uv)
         else:
-            new, old = _self_update_via_pip(with_uv=with_uv)
+            old, new = _self_update_via_pip(with_uv=with_uv)
 
     except pb.ProcessExecutionError as e:
         print(e.message, file=sys.stdout)
