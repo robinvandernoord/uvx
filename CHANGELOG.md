@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.9.2 (2024-04-10)
+
+### Fix
+
+* **self-update:** Proper order of old and new + disable caching for self update ([`27298eb`](https://github.com/robinvandernoord/uvx/commit/27298ebfee768c163b6b63db84bd0e5af1fb4f4b))
+
 ## v0.9.1 (2024-04-10)
 
 ### Fix
