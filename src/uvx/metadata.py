@@ -64,6 +64,7 @@ decoder = msgspec.msgpack.Decoder(type=Metadata)
 
 
 def fake_install(spec: str) -> dict:
+    """Dry run pip to extract metadata of a local package."""
     _uv("pip", "install", "pip")  # ensure we have pip
 
     with tempfile.NamedTemporaryFile() as f:
@@ -74,6 +75,7 @@ def fake_install(spec: str) -> dict:
 
 @threadful.thread
 def resolve_local(spec: str) -> tuple[Maybe[str], Maybe[str]]:
+    """Resolve the package name of a local package by dry run installing it."""
     try:
         full_data = fake_install(spec)
         install_data = full_data["install"][0]

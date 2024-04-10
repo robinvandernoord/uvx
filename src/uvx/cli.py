@@ -5,7 +5,7 @@ import subprocess  # nosec
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Annotated
 
 import rich
 import typer
@@ -34,29 +34,60 @@ app = typer.Typer()
 
 
 def output(result: Result[str, Exception]) -> None:
+    """Output positive (ok) result to stdout and error result to stderr."""
     match result:
         case Ok(msg):
-            rich.print(msg)  # :trash:
+            rich.print(msg)
         case Err(err):
             rich.print(err, file=sys.stderr)
 
 
+OPTION_PYTHON_HELP_TEXT = "Python version or executable to use, e.g. `3.12`, `python3.12`, `/usr/bin/python3.12`"
+
+
 @app.command()
-def install(package_name: str, force: bool = False, python: str = "", no_cache: bool = False):
+def install(
+    package_name: str,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "-f", "--force", help="Overwrite currently installed executables with the same name (in ~/.local/bin)"
+        ),
+    ] = False,
+    python: Annotated[str, typer.Option(help=OPTION_PYTHON_HELP_TEXT)] = "",
+    no_cache: Annotated[bool, typer.Option("--no-cache", help="Run without `uv` cache")] = False,
+):
     """Install a package (by pip name)."""
-    # todo: support 'install .'
     output(install_package(package_name, python=python, force=force, no_cache=no_cache))
 
 
 @app.command(name="upgrade")
 @app.command(name="update")
-def upgrade(package_name: str, force: bool = False, skip_injected: bool = False, no_cache: bool = False):
+def upgrade(
+    package_name: str,
+    force: Annotated[bool, typer.Option("-f", "--force", help="Ignore previous version constraint")] = False,
+    skip_injected: Annotated[
+        bool, typer.Option("--skip-injected", help="Don't also upgrade injected packages")
+    ] = False,
+    no_cache: Annotated[bool, typer.Option("--no-cache", help="Run without `uv` cache")] = False,
+):
+    """Upgrade a package."""
     output(upgrade_package(package_name, force=force, skip_injected=skip_injected, no_cache=no_cache))
 
 
 @app.command(name="remove")
 @app.command(name="uninstall")
-def uninstall(package_name: str, force: bool = False):
+def uninstall(
+    package_name: str,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "-f",
+            "--force",
+            help="Remove executable with the same name (in ~/.local/bin) even if related venv was not found",
+        ),
+    ] = False,
+):
     """Uninstall a package (by pip name)."""
     output(uninstall_package(package_name, force=force).map(lambda version: f"🗑️ {package_name}{version} removed!"))
 
@@ -64,10 +95,12 @@ def uninstall(package_name: str, force: bool = False):
 @app.command()
 def reinstall(
     package: str,
-    python: Optional[str] = None,
-    force: bool = False,
-    without_injected: bool = False,
-    no_cache: bool = False,
+    python: Annotated[str, typer.Option(help=OPTION_PYTHON_HELP_TEXT)] = "",
+    force: Annotated[bool, typer.Option("-f", "--force", help="See `install --force`")] = False,
+    without_injected: Annotated[
+        bool, typer.Option("--without-injected", help="Don't include previously injected libraries in reinstall")
+    ] = False,
+    no_cache: Annotated[bool, typer.Option("--no-cache", help="Run without `uv` cache")] = False,
 ):
     """Uninstall a package (by pip name) and re-install from the original spec (unless a new spec is supplied)."""
     output(
@@ -83,6 +116,7 @@ def reinstall(
 
 @app.command()
 def inject(into: str, package_specs: list[str]):
+    """Install additional packages to a virtual environment managed by uvx."""
     output(
         inject_packages(
             into,

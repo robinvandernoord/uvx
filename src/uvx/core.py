@@ -111,7 +111,7 @@ def install_package(
     venv: Optional[Path] = None,
     python: Optional[str] = None,
     force: bool = False,
-    extras: Optional[list[str]] = None,
+    extras: Optional[typing.Iterable[str]] = None,
     no_cache: bool = False,
 ) -> Result[str, Exception]:
     """
@@ -138,23 +138,23 @@ def install_package(
     # todo: make --force use --no-cache
 
     with virtualenv(venv), exit_on_pb_error():
+        args: list[str] = []
+        text = f"installing {meta.name}"
+        if extras:
+            args.extend(extras)
+            text += f" with {extras}"
+
+        if no_cache:
+            args += ["--no-cache"]
+
         try:
-            args = []
-            text = f"installing {meta.name}"
-            if extras:
-                args.extend(extras)
-                text += f" with {extras}"
-
-            if no_cache:
-                args += ["--no-cache"]
-
             animate(uv("pip", "install", meta.install_spec, *args), text=text)
 
-            # must still be in the venv for these:
+            # must still be in the venv and try for these:
             meta.installed_version = get_package_version(meta.name, venv)
             meta.python = get_python_version(venv)
             meta.python_raw = get_python_executable(venv)
-            meta.injected = extras
+            meta.injected = set(extras)
 
         except plumbum.ProcessExecutionError as e:
             remove_dir(venv)
@@ -235,6 +235,7 @@ def reinstall_package(
 
 
 def inject_packages(into: str, package_specs: set[str]) -> Result[str, Exception]:
+    """Install extra libraries into a package-specific venv."""
     match collect_metadata(into):
         case Err(e):
             return Err(e)
@@ -277,6 +278,7 @@ def remove_dir(path: Path):
 def upgrade_package(
     package_name: str, force: bool = False, skip_injected: bool = False, no_cache: bool = False
 ) -> Result[str, Exception]:
+    """Upgrade a package in its venv."""
     # run `uv pip install --upgrade package` with requested install spec (version, extras, injected)
     # if --force is used, the previous version is ignored.
     match collect_metadata(package_name):
@@ -302,8 +304,13 @@ def upgrade_package(
         # if --force, drop version spec
         base_pkg = meta.name
         extras = meta.extras
-        injected = [] if skip_injected else (meta.injected or [])
-        version = spec_metadata.requested_version or ("" if force else meta.requested_version)
+
+        injected: set[str] = (not skip_injected and meta.injected) or set()
+        # injected = set() if skip_injected else (meta.injected or set())
+
+        version: str = spec_metadata.requested_version or (not force and meta.requested_version) or ""
+        # version = spec_metadata.requested_version or ("" if force else meta.requested_version)
+
         options = []
         if force:
             options.append("--no-cache")
