@@ -31,6 +31,7 @@ dependencies = [
     "msgspec",
     "packaging",
     "result",
+    "configuraptor",
 ]
 
 [project.optional-dependencies]

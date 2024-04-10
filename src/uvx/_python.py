@@ -1,9 +1,11 @@
 import sys
 import textwrap
+import typing
 from pathlib import Path
 
 import plumbum  # type: ignore
 from plumbum.cmd import grep  # type: ignore
+from plumbum.commands.base import BoundCommand  # type: ignore
 from plumbum.machines.local import LocalCommand  # type: ignore
 from uv import find_uv_bin
 
@@ -54,11 +56,30 @@ def get_python_executable(venv: Path):
     return str(executable.resolve())  # /usr/bin/python3.xx
 
 
+T = typing.TypeVar("T")
+
+RAISE = object()  # special sentry object
+
+
+def _get_package_version(package: str, pip_list: BoundCommand, default: T) -> str | T:
+    try:
+        regex = f"^({package}==|{package} @)"
+        line: str = (pip_list | grep["-E", regex])().strip()
+        return (line.split("@")[-1] if "@" in line else line.split("==")[-1]).strip()
+    except Exception as e:
+        if default is RAISE:
+            raise e
+
+        return default
+
+
 def get_package_version(package: str, venv: Path) -> str:
     """Get the currently installed version of a specific package."""
     # assumes `with virtualenv(venv)` block executing this function
     uv = _uv_in_venv(venv)
 
-    regex = f"^({package}==|{package} @)"
-    line: str = (uv["pip", "freeze"] | grep["-E", regex])().strip()
-    return (line.split("@")[-1] if "@" in line else line.split("==")[-1]).strip()
+    return _get_package_version(
+        package,
+        uv["pip", "freeze"],
+        default="",
+    )

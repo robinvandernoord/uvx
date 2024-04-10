@@ -8,8 +8,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
+import plumbum as pb  # type: ignore
 import rich
 import typer
+from plumbum import local
+from plumbum.commands.base import BoundCommand  # type: ignore
 from result import Err, Ok, Result
 from typer import Context
 
@@ -18,7 +21,7 @@ from uvx._constants import BIN_DIR
 from .__about__ import __version__
 from ._cli_support import State
 from ._maybe import Maybe
-from ._python import _python_in_venv, _uv, _pip
+from ._python import _get_package_version, _pip, _python_in_venv, _uv
 from .core import (
     as_virtualenv,
     format_bools,
@@ -141,18 +144,68 @@ def upgrade_all(
         upgrade(venv_name, force=force, skip_injected=skip_injected, no_cache=no_cache)
 
 
+def _self_update_via_cmd(pip_ish: BoundCommand, with_uv: bool):
+    old = {}
+    new = {}
+
+    old["uv"] = _get_package_version("uv", pip_ish["freeze"], default="unknown")
+
+    old["uvx"] = _get_package_version("uvx", pip_ish["freeze"], default="unknown")
+
+    cmd = pip_ish["install", "--upgrade", "uvx"]
+    if with_uv:
+        cmd = cmd["uv"]
+
+    cmd()
+
+    new["uv"] = _get_package_version("uv", pip_ish["freeze"], default="unknown")
+
+    new["uvx"] = _get_package_version("uvx", pip_ish["freeze"], default="unknown")
+
+    return old, new
+
+
+def _self_update_via_uv(with_uv: bool):
+    return _self_update_via_cmd(_uv["pip"], with_uv=with_uv)
+
+
+def _self_update_via_pip(with_uv: bool):
+    return _self_update_via_cmd(_pip, with_uv=with_uv)
+
+
 @app.command()
 def self_update(
-    with_uv: Annotated[bool, typer.Option("--with-uv/--without-uv", '-w/-W')] = True,
+    with_uv: Annotated[bool, typer.Option("--with-uv/--without-uv", "-w/-W")] = True,
 ):
+    """Update the current installation of uvx and optionally uv."""
     # if in venv and uv available -> upgrade via uv
     # else: upgrade via pip
-    if os.getenv("VIRTUAL_ENV"):
-        print(_uv)
-    else:
-        print(_pip)
 
-    print(f'self update {with_uv = }')
+    try:
+        if os.getenv("VIRTUAL_ENV"):
+            # already activated venv
+            new, old = _self_update_via_uv(with_uv=with_uv)
+        elif sys.prefix != sys.base_prefix:
+            # venv-like environment (pipx, uvx)
+            with local.env(VIRTUAL_ENV=sys.prefix):
+                new, old = _self_update_via_uv(with_uv=with_uv)
+        else:
+            new, old = _self_update_via_pip(with_uv=with_uv)
+
+    except pb.ProcessExecutionError as e:
+        print(e.message, file=sys.stdout)
+        print(e.stdout, file=sys.stdout)
+        print(e.stderr, file=sys.stderr)
+        exit(e.retcode)
+
+    for package, old_version in old.items():
+        new_version = new.get(package)
+        if new_version == old_version:
+            rich.print(f"[bold]'{package}'[/bold] not updated (version: [green]{old_version}[/green])")
+        else:
+            rich.print(
+                f"[bold]'{package}'[/bold] updated from [red]{old_version}[/red] to [green]{new_version}[/green]"
+            )
 
 
 # list
