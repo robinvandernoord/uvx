@@ -125,6 +125,29 @@ def inject(into: str, package_specs: list[str]):
     )
 
 
+# todo:
+# self-upgrade (uv and uvx)
+# upgrade-all
+
+@app.command()
+def upgrade_all(
+    force: Annotated[bool, typer.Option("-f", "--force", help="Ignore previous version constraint")] = False,
+    skip_injected: Annotated[
+        bool, typer.Option("--skip-injected", help="Don't also upgrade injected packages")
+    ] = False,
+    no_cache: Annotated[bool, typer.Option("--no-cache", help="Run without `uv` cache")] = False,
+):
+    """Upgrade all uvx-installed packages."""
+
+    for (venv_name, _) in list_packages():
+        upgrade(
+            venv_name,
+            force=force,
+            skip_injected=skip_injected,
+            no_cache=no_cache
+        )
+
+
 # list
 def _list_short(name: str, metadata: Maybe[Metadata]):
     rich.print("-", name, metadata.map_or("[red]?[/red]", lambda md: md.installed_version))
@@ -210,11 +233,6 @@ def runpython(venv: str, ctx: Context):
     with as_virtualenv(venv) as venv_path:
         python = venv_path / "bin" / "python"
         subprocess.run([python, *ctx.args])  # nosec
-
-
-# todo:
-# self-upgrade (uv and uvx)
-# upgrade-all
 
 
 def add_to_bashrc(text: str, with_comment: bool = True):
