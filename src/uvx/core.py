@@ -37,6 +37,7 @@ def uv(*args: typing.Any, **kwargs: str):
         str: The result of the uv command.
     """
     if kwargs:
+        # todo: Add to args: {'a': 1, 'longer': 2} -> ['-a', '1', '--longer', '2']
         raise NotImplementedError("todo")
 
     result: str = _uv(*args)

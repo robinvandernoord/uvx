@@ -201,10 +201,10 @@ def self_update(
     for package, old_version in old.items():
         new_version = new.get(package)
         if new_version == old_version:
-            rich.print(f"[bold]'{package}'[/bold] not updated (version: [green]{old_version}[/green])")
+            rich.print(f"🌟 [bold]'{package}'[/bold] not updated (version: [green]{old_version}[/green])")
         else:
             rich.print(
-                f"[bold]'{package}'[/bold] updated from [red]{old_version}[/red] to [green]{new_version}[/green]"
+                f"🚀 [bold]'{package}'[/bold] updated from [red]{old_version}[/red] to [green]{new_version}[/green]"
             )
 
 
