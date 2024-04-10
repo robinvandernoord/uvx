@@ -18,7 +18,7 @@ from uvx._constants import BIN_DIR
 from .__about__ import __version__
 from ._cli_support import State
 from ._maybe import Maybe
-from ._python import _python_in_venv, _uv
+from ._python import _python_in_venv, _uv, _pip
 from .core import (
     as_virtualenv,
     format_bools,
@@ -128,11 +128,6 @@ def inject(into: str, package_specs: list[str]):
     )
 
 
-# todo:
-# self-upgrade (uv and uvx)
-# upgrade-all
-
-
 @app.command()
 def upgrade_all(
     force: Annotated[bool, typer.Option("-f", "--force", help="Ignore previous version constraint")] = False,
@@ -144,6 +139,20 @@ def upgrade_all(
     """Upgrade all uvx-installed packages."""
     for venv_name, _ in list_packages():
         upgrade(venv_name, force=force, skip_injected=skip_injected, no_cache=no_cache)
+
+
+@app.command()
+def self_update(
+    with_uv: Annotated[bool, typer.Option("--with-uv/--without-uv", '-w/-W')] = True,
+):
+    # if in venv and uv available -> upgrade via uv
+    # else: upgrade via pip
+    if os.getenv("VIRTUAL_ENV"):
+        print(_uv)
+    else:
+        print(_pip)
+
+    print(f'self update {with_uv = }')
 
 
 # list
