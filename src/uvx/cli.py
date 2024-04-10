@@ -98,6 +98,8 @@ def uninstall(
     output(uninstall_package(package_name, force=force).map(lambda version: f"🗑️ {package_name}{version} removed!"))
 
 
+# todo: uninstall-all
+
 @app.command()
 def reinstall(
     package: str,
@@ -120,6 +122,8 @@ def reinstall(
     )
 
 
+# todo: reinstall-all
+
 @app.command()
 def inject(into: str, package_specs: list[str]):
     """Install additional packages to a virtual environment managed by uvx."""
@@ -129,6 +133,9 @@ def inject(into: str, package_specs: list[str]):
             set(package_specs),
         )
     )
+
+
+# todo: uninject
 
 
 @app.command()
@@ -272,6 +279,8 @@ def list_venvs(short: bool = False, verbose: bool = False, json: bool = False):
             _list_short(name, metadata)
         else:
             _list_normal(name, metadata, verbose=verbose)
+
+# todo: run
 
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
