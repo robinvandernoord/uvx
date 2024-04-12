@@ -267,6 +267,9 @@ def inject_packages(into: str, package_specs: set[str]) -> Result[str, Exception
 
     return Ok(f"💉 Injected {package_specs} into {meta.name}.")  # :needle:
 
+def eject_packages(outouf: str, package_specs: set[str]) -> Result[str, Exception]:
+    print(f'remove {package_specs} from {outouf}')
+    return Ok('-')
 
 def remove_dir(path: Path):
     """

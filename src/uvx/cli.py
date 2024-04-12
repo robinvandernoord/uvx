@@ -24,6 +24,7 @@ from ._maybe import Maybe
 from ._python import _get_package_version, _pip, _python_in_venv, _uv
 from .core import (
     as_virtualenv,
+    eject_packages,
     format_bools,
     inject_packages,
     install_package,
@@ -81,6 +82,19 @@ def upgrade(
     output(upgrade_package(package_name, force=force, skip_injected=skip_injected, no_cache=no_cache))
 
 
+@app.command()
+def upgrade_all(
+    force: Annotated[bool, typer.Option("-f", "--force", help="Ignore previous version constraint")] = False,
+    skip_injected: Annotated[
+        bool, typer.Option("--skip-injected", help="Don't also upgrade injected packages")
+    ] = False,
+    no_cache: Annotated[bool, typer.Option("--no-cache", help="Run without `uv` cache")] = False,
+):
+    """Upgrade all uvx-installed packages."""
+    for venv_name, _ in list_packages():
+        upgrade(venv_name, force=force, skip_injected=skip_injected, no_cache=no_cache)
+
+
 @app.command(name="remove")
 @app.command(name="uninstall")
 def uninstall(
@@ -98,7 +112,21 @@ def uninstall(
     output(uninstall_package(package_name, force=force).map(lambda version: f"🗑️ {package_name}{version} removed!"))
 
 
-# todo: uninstall-all
+
+@app.command()
+def uninstall_all(
+    force: Annotated[
+        bool,
+        typer.Option(
+            "-f",
+            "--force",
+            help="Remove executable with the same name (in ~/.local/bin) even if related venv was not found",
+        ),
+    ] = False,
+):
+    """Uninstall all uvx-installed packages."""
+    for venv_name, _ in list_packages():
+        uninstall(venv_name, force=force)
 
 @app.command()
 def reinstall(
@@ -122,9 +150,19 @@ def reinstall(
     )
 
 
-# todo: reinstall-all
-
 @app.command()
+def reinstall_all(
+    python: Annotated[str, typer.Option(help=OPTION_PYTHON_HELP_TEXT)] = "",
+    force: Annotated[bool, typer.Option("-f", "--force", help="See `install --force`")] = False,
+    without_injected: Annotated[
+        bool, typer.Option("--without-injected", help="Don't include previously injected libraries in reinstall")
+    ] = False,
+    no_cache: Annotated[bool, typer.Option("--no-cache", help="Run without `uv` cache")] = False,
+):
+    """Uninstall all uvx-installed packages."""
+    for venv_name, _ in list_packages():
+        reinstall(venv_name, python=python, force=force, without_injected=without_injected, no_cache=no_cache)
+
 def inject(into: str, package_specs: list[str]):
     """Install additional packages to a virtual environment managed by uvx."""
     output(
@@ -134,21 +172,15 @@ def inject(into: str, package_specs: list[str]):
         )
     )
 
-
-# todo: uninject
-
-
-@app.command()
-def upgrade_all(
-    force: Annotated[bool, typer.Option("-f", "--force", help="Ignore previous version constraint")] = False,
-    skip_injected: Annotated[
-        bool, typer.Option("--skip-injected", help="Don't also upgrade injected packages")
-    ] = False,
-    no_cache: Annotated[bool, typer.Option("--no-cache", help="Run without `uv` cache")] = False,
-):
-    """Upgrade all uvx-installed packages."""
-    for venv_name, _ in list_packages():
-        upgrade(venv_name, force=force, skip_injected=skip_injected, no_cache=no_cache)
+@app.command(name='eject')
+@app.command(name='uninject')
+def uninject(outof: str, package_specs: list[str]):
+        output(
+        eject_packages(
+            outof,
+            set(package_specs),
+        )
+    )
 
 
 def _self_update_via_cmd(pip_ish: BoundCommand, with_uv: bool):
