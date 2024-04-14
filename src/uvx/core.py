@@ -316,7 +316,7 @@ def upgrade_package(
         # version = spec_metadata.requested_version or ("" if force else meta.requested_version)
 
         options = []
-        if force:
+        if no_cache or force:
             options.append("--no-cache")
 
         upgrade_spec = base_pkg + version
