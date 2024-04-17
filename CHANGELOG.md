@@ -2,6 +2,18 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.0 (2024-04-17)
+
+### Feature
+
+* `uvx run <library>` to run a package from pypi ([`faba096`](https://github.com/robinvandernoord/uvx/commit/faba096266f22d668e5a69a381b3b97b6fcad07e))
+* **uninject:** Implemented eject ([`fbd2f6e`](https://github.com/robinvandernoord/uvx/commit/fbd2f6efb9a28ec91add88f7afd24bcc58f9ddac))
+* Work in progress on more commadns (uninstall-all, reinstall-all, uninject/eject) ([`a0e205c`](https://github.com/robinvandernoord/uvx/commit/a0e205c842a6ea1db2d2f138350b65dce54a6df5))
+
+### Fix
+
+* **upgrade:** Actually listen to 'no_cache' ([`ce7899e`](https://github.com/robinvandernoord/uvx/commit/ce7899e17f357897ebc503d9b8b97b88473f2578))
+
 ## v0.9.4 (2024-04-10)
 
 ### Fix
