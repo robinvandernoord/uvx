@@ -4,6 +4,7 @@ import functools
 import os
 import subprocess  # nosec
 import sys
+import typing
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
@@ -112,7 +113,6 @@ def uninstall(
     output(uninstall_package(package_name, force=force).map(lambda version: f"🗑️ {package_name}{version} removed!"))
 
 
-
 @app.command()
 def uninstall_all(
     force: Annotated[
@@ -127,6 +127,7 @@ def uninstall_all(
     """Uninstall all uvx-installed packages."""
     for venv_name, _ in list_packages():
         uninstall(venv_name, force=force)
+
 
 @app.command()
 def reinstall(
@@ -163,6 +164,8 @@ def reinstall_all(
     for venv_name, _ in list_packages():
         reinstall(venv_name, python=python, force=force, without_injected=without_injected, no_cache=no_cache)
 
+
+@app.command()
 def inject(into: str, package_specs: list[str]):
     """Install additional packages to a virtual environment managed by uvx."""
     output(
@@ -172,13 +175,14 @@ def inject(into: str, package_specs: list[str]):
         )
     )
 
-@app.command(name='eject')
-@app.command(name='uninject')
-def uninject(outof: str, package_specs: list[str]):
-        output(
+
+@app.command(name="eject")
+@app.command(name="uninject")
+def uninject(outof: str, package_specs: typing.Annotated[list[str], typer.Argument()] = None):
+    output(
         eject_packages(
             outof,
-            set(package_specs),
+            set(package_specs or []),
         )
     )
 
@@ -311,6 +315,7 @@ def list_venvs(short: bool = False, verbose: bool = False, json: bool = False):
             _list_short(name, metadata)
         else:
             _list_normal(name, metadata, verbose=verbose)
+
 
 # todo: run
 

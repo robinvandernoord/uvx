@@ -267,9 +267,41 @@ def inject_packages(into: str, package_specs: set[str]) -> Result[str, Exception
 
     return Ok(f"💉 Injected {package_specs} into {meta.name}.")  # :needle:
 
-def eject_packages(outouf: str, package_specs: set[str]) -> Result[str, Exception]:
-    print(f'remove {package_specs} from {outouf}')
-    return Ok('-')
+
+def eject_packages(outof: str, package_specs: set[str]) -> Result[str, Exception]:
+    """Uninstall extra libraries into a package-specific venv."""
+    match collect_metadata(outof):
+        case Err(e):
+            return Err(e)
+        case Ok(meta):
+            # just bind meta
+            ...
+
+    workdir = ensure_local_folder()
+    venv = workdir / "venvs" / meta.name
+
+    if not venv.exists():
+        return Err(ValueError(f"'{meta.name}' was not previously installed. Please run 'uvx install {outof}' first."))
+
+    # after getting the right venv, load actual metadata (with fallback to previous emptier metadata):
+    meta = read_metadata(venv).unwrap_or(meta)
+
+    if not package_specs:
+        package_specs = meta.injected
+        if not package_specs:
+            return Err(ValueError(f"⚠️ No previous packages to uninject."))
+
+    with virtualenv(venv), exit_on_pb_error():
+        try:
+            animate(uv("pip", "uninstall", *package_specs), text=f"ejecting {package_specs}")
+        except plumbum.ProcessExecutionError as e:
+            return Err(e)
+
+    meta.injected = (meta.injected or set()) - package_specs
+    store_metadata(meta, venv)
+
+    return Ok(f"⏏️ Uninjected {package_specs} into {meta.name}.")  # :eject:
+
 
 def remove_dir(path: Path):
     """
