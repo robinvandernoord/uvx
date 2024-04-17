@@ -1,7 +1,9 @@
 """Core functionality."""
 
 import shutil
+import subprocess  # nosec
 import sys
+import tempfile
 import typing
 from contextlib import contextmanager
 from pathlib import Path
@@ -14,6 +16,7 @@ from result import Err, Ok, Result
 from threadful import thread
 from threadful.bonus import animate
 
+from ._cli_support import interactive_selected_radio_value
 from ._constants import WORK_DIR
 from ._maybe import Maybe
 from ._python import _uv, get_package_version, get_python_executable, get_python_version
@@ -107,28 +110,9 @@ def format_bools(data: dict[str, bool], sep=" | ") -> str:
     return sep.join([f"[green]{k}[/green]" if v else f"[red]{k}[/red]" for k, v in data.items()])
 
 
-def install_package(
-    package_name: str,
-    venv: Optional[Path] = None,
-    python: Optional[str] = None,
-    force: bool = False,
-    extras: Optional[typing.Iterable[str]] = None,
-    no_cache: bool = False,
-) -> Result[str, Exception]:
-    """
-    Install a package in a virtual environment.
-
-    Args:
-        package_name (str): The name of the package.
-        venv (Optional[Path], optional): The path of the virtual environment. Defaults to None.
-        python (str): version or executable to use.
-        force (bool, optional): If True, overwrites existing package. Defaults to False.
-        extras: which optional features ('extras') to install for this package.
-        no_cache: don't use `uv` cache.
-    """
-    if extras is None:
-        extras = []
-
+def _install_package(
+    package_name: str, venv: Path | None, python: str | None, force: bool, no_cache: bool, extras: typing.Iterable[str]
+) -> Result[Metadata, Exception]:
     match collect_metadata(package_name):
         case Err(e):
             return Err(e)
@@ -162,8 +146,44 @@ def install_package(
             remove_dir(venv)
             return Err(e)
 
+    return Ok(meta)
+
+
+def install_package(
+    package_name: str,
+    venv: Path | None = None,
+    python: Optional[str] = None,
+    force: bool = False,
+    extras: Optional[typing.Iterable[str]] = None,
+    no_cache: bool = False,
+    skip_symlinks: bool = False,
+) -> Result[str, Exception]:
+    """
+    Install a package in a virtual environment.
+
+    Args:
+        package_name (str): The name of the package.
+        venv (Optional[Path], optional): The path of the virtual environment. Defaults to None.
+        python (str): version or executable to use.
+        force (bool, optional): If True, overwrites existing package. Defaults to False.
+        extras: which optional features ('extras') to install for this package.
+        no_cache: don't use `uv` cache.
+        skip_symlinks: should symlinks NOT be set up after installing the package into a venv?
+    """
+    if extras is None:
+        extras = []
+
+    match _install_package(package_name, venv, python=python, extras=extras, force=force, no_cache=no_cache):
+        case Err(err):
+            return Err(err)
+        case Ok(meta):
+            ...
+
+    if venv is None:
+        venv = ensure_local_folder() / "venvs" / meta.name
+
     msg = ""
-    if install_symlinks(meta.name, venv, force=force, meta=meta):
+    if skip_symlinks or install_symlinks(meta.name, venv, force=force, meta=meta):
         msg = f"📦 {meta.name} ({meta.installed_version}) installed!"  # :package:
 
     store_metadata(meta, venv)
@@ -287,9 +307,9 @@ def eject_packages(outof: str, package_specs: set[str]) -> Result[str, Exception
     meta = read_metadata(venv).unwrap_or(meta)
 
     if not package_specs:
-        package_specs = meta.injected
+        package_specs = meta.injected or set()
         if not package_specs:
-            return Err(ValueError(f"⚠️ No previous packages to uninject."))
+            return Err(ValueError("⚠️ No previous packages to uninject."))
 
     with virtualenv(venv), exit_on_pb_error():
         try:
@@ -312,6 +332,65 @@ def remove_dir(path: Path):
     """
     if path.exists():
         shutil.rmtree(path)
+
+
+TMP = Path(tempfile.gettempdir())
+
+
+def run_package(
+    spec: str,
+    args: list[str],
+    keep: bool,
+    python: Optional[str],
+    no_cache: bool = False,
+    binary_name: str = "",
+) -> Result[str, Exception]:
+    """Run a Python package in a temporary virtual environment."""
+    # TemporaryDirectory with delete=False only works on py3.12 so do it manually:
+    tmpdir = TMP / f"uvx-{spec}"
+    try:
+        _create_venv(tmpdir, python, with_pip=True)
+        if keep:
+            rich.print(f"ℹ️ Using virtualenv [blue]{tmpdir}[/blue]", file=sys.stderr)
+
+        match _install_package(spec, tmpdir, python=python, no_cache=no_cache, force=False, extras=[]):
+            case Err(msg):
+                return Err(msg)
+            case Ok(meta):
+                ...
+
+        tmp_bin = tmpdir / "bin"
+        if binary_name:
+            binary = tmp_bin / binary_name
+        else:
+            binary = tmp_bin / meta.name
+
+        if not binary.exists():
+            rich.print(f"Executable '{binary}' not found, looking for alternatives.", file=sys.stderr)
+
+            symlinks = [tmp_bin / _ for _ in find_symlinks(meta.name, tmpdir)]
+            symlinks = [_ for _ in symlinks if _.exists()]
+            match len(symlinks):
+                case 0:
+                    return Err(ValueError("No alternative executables could be found."))
+                case 1:
+                    binary = symlinks[0]
+                case _:
+                    binary = Path(
+                        interactive_selected_radio_value(
+                            symlinks,  # type: ignore
+                            prompt="Multiple executables found. "
+                            "Please choose one (spacebar to select, enter to confirm):",
+                        )
+                    )
+
+        subprocess.run([binary, *args])  # nosec
+
+    finally:
+        if not keep:
+            remove_dir(tmpdir)
+
+    return Ok("")
 
 
 def upgrade_package(
@@ -425,6 +504,22 @@ def ensure_local_folder() -> Path:
     return WORK_DIR
 
 
+def _create_venv(venv_path: Path, python: str | None, with_pip: bool):
+    args = ["venv", venv_path]
+
+    if python:
+        args.extend(["--python", python])
+
+    if with_pip:
+        args.append("--seed")
+
+    uv(*args).join()
+
+    # if with_pip:
+    #     with virtualenv(venv_path):
+    #         animate(uv("pip", "install", "pip", "uv"))
+
+
 def create_venv(name: str, python: Optional[str] = None, force: bool = False, with_pip: bool = True) -> Path:
     """
     Create a virtual environment.
@@ -450,16 +545,7 @@ def create_venv(name: str, python: Optional[str] = None, force: bool = False, wi
         )
         exit(1)
 
-    args = ["venv", venv_path]
-
-    if python:
-        args.extend(["--python", python])
-
-    uv(*args).join()
-
-    if with_pip:
-        with virtualenv(venv_path):
-            animate(uv("pip", "install", "pip", "uv"))
+    _create_venv(venv_path, python, with_pip)
 
     return venv_path
 

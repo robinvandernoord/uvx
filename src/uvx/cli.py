@@ -7,7 +7,7 @@ import sys
 import typing
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import plumbum as pb  # type: ignore
 import rich
@@ -17,10 +17,9 @@ from plumbum.commands.base import BoundCommand  # type: ignore
 from result import Err, Ok, Result
 from typer import Context
 
-from uvx._constants import BIN_DIR
-
 from .__about__ import __version__
 from ._cli_support import State
+from ._constants import BIN_DIR
 from ._maybe import Maybe
 from ._python import _get_package_version, _pip, _python_in_venv, _uv
 from .core import (
@@ -32,6 +31,7 @@ from .core import (
     list_packages,
     reinstall_package,
     run_command,
+    run_package,
     uninstall_package,
     upgrade_package,
 )
@@ -45,7 +45,8 @@ def output(result: Result[str, Exception]) -> None:
     """Output positive (ok) result to stdout and error result to stderr."""
     match result:
         case Ok(msg):
-            rich.print(msg)
+            if msg:
+                rich.print(msg)
         case Err(err):
             rich.print(err, file=sys.stderr)
 
@@ -178,7 +179,11 @@ def inject(into: str, package_specs: list[str]):
 
 @app.command(name="eject")
 @app.command(name="uninject")
-def uninject(outof: str, package_specs: typing.Annotated[list[str], typer.Argument()] = None):
+def uninject(
+    outof: str,
+    package_specs: typing.Annotated[list[str], typer.Argument()] = None,  # type: ignore
+):
+    """Uninstall additional packages from a virtual environment managed by uvx."""
     output(
         eject_packages(
             outof,
@@ -317,7 +322,22 @@ def list_venvs(short: bool = False, verbose: bool = False, json: bool = False):
             _list_normal(name, metadata, verbose=verbose)
 
 
-# todo: run
+@app.command("run")
+def run(
+    package: str,
+    args: typing.Annotated[list[str], typer.Argument()] = None,  # type: ignore
+    keep: bool = False,
+    python: Annotated[str, typer.Option(help=OPTION_PYTHON_HELP_TEXT)] = "",
+    no_cache: bool = False,
+    binary: typing.Annotated[
+        Optional[str],
+        typer.Option(
+            help="Custom name of an executable to run (e.g. 'semantic-release' in the package 'python-semantic-release')"
+        ),
+    ] = None,
+):
+    """Run a package in a temporary virtual environment."""
+    output(run_package(package, args or [], keep=keep, python=python, no_cache=no_cache, binary_name=binary or ""))
 
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
