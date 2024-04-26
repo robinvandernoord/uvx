@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.1 (2024-04-26)
+
+### Fix
+
+* **self-update:** Prevent unsupported systems trying to upgrade to uvx 2.x ([`c3862f9`](https://github.com/robinvandernoord/uvx/commit/c3862f9e610779ed36a0ccb648e80c78b1003469))
+
+### Documentation
+
+* Mentioned uvx2 rust rewrite ([`dce1cbb`](https://github.com/robinvandernoord/uvx/commit/dce1cbbf86954948ea9b92db75234861a2d7f7f2))
+
 ## v1.0.0 (2024-04-17)
 
 ### Feature
