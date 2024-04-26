@@ -2,6 +2,7 @@
 
 import functools
 import os
+import platform
 import subprocess  # nosec
 import sys
 import typing
@@ -192,6 +193,19 @@ def uninject(
     )
 
 
+UVX2_PLATFORMS = {"linux"}
+UVX2_ARCH = {"x86_64", "aarch64"}
+
+
+def system_supports_uvx2() -> bool:
+    return sys.platform in UVX2_PLATFORMS and platform.machine() in UVX2_ARCH
+
+
+def _uvx_upgrade_spec():
+    # uvx 2.x should only be used on supported platforms.
+    return "uvx" if system_supports_uvx2() else "uvx<2"
+
+
 def _self_update_via_cmd(pip_ish: BoundCommand, with_uv: bool):
     old = {}
     new = {}
@@ -200,7 +214,7 @@ def _self_update_via_cmd(pip_ish: BoundCommand, with_uv: bool):
 
     old["uvx"] = _get_package_version("uvx", pip_ish["freeze"], default="unknown")
 
-    cmd = pip_ish["install", "--upgrade", "uvx"]
+    cmd = pip_ish["install", "--upgrade", _uvx_upgrade_spec()]
     if with_uv:
         cmd = cmd["uv"]
 
