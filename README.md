@@ -22,15 +22,16 @@ uvx
 
 Run `uvx` without any arguments to see all possible subcommands.
 
-## Note - pending replacement
+## Note - Version 2.0 Now Available
 
-Although version `1.0.0` was recently released, work has already begun on version `2.0.0`, which is being developed
-at [robinvandernoord/uvx2](https://github.com/robinvandernoord/uvx2/). The decision to undertake this new version is
-driven by performance concerns with the current Python implementation, which has a startup time of 200ms. To address
-this, `uvx 2.0` is being rewritten in Rust. This transition will enable `uvx` to utilize some of the APIs of `uv`
-directly, without the need to spawn a separate process (in some cases), thus enhancing performance further. 
-Despite this rewrite, both the repository and the existing Python implementation will be maintained, 
-particularly for bug fixes, because it may have a larger (backwards) compatibility across system architectures.
+Version `2.0.0` of uvx has been released and is now available. This new release has been rewritten in Rust to address performance concerns with the previous Python implementation, notably reducing startup time. Version `2.0.0` directly utilizes some APIs of `uv`, enhancing performance by avoiding the need to spawn a separate process in some cases. 
+
+Despite the availability of this new version, the repository and the existing Python implementation of uvx 1.x will continue to be maintained for bug fixes and to ensure (backwards) compatibility across different system architectures.
+
+For users on supported Linux platforms with x86_64 (amd64) or aarch64 (ARM64) architectures, version 2.0 can be installed via pip or compiled manually from source if necessary. This version is not available through PyPI for other platforms, which can still utilize uvx 1.x or opt for manual compilation of uvx 2.0.
+
+Discover more about the new features and enhancements by visiting the new project repository at [robinvandernoord/uvx2](https://github.com/robinvandernoord/uvx2/).
+
 
 ## License
 
