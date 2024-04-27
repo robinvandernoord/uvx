@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.2 (2024-04-27)
+
+### Fix
+
+* Backport .metadata header from v2 to v1 ([`9b9b82b`](https://github.com/robinvandernoord/uvx/commit/9b9b82b6f8c54c378f18c9e7a726f1402adb29ee))
+
+### Documentation
+
+* Show (new) info about 2.0 rewrite ([`e2fd52f`](https://github.com/robinvandernoord/uvx/commit/e2fd52fc731e96e5313b64dadddbe900623ae76d))
+
 ## v1.0.1 (2024-04-26)
 
 ### Fix
