@@ -22,6 +22,11 @@ T = typing.TypeVar("T", bound=typing.Any)
 V = typing.TypeVar("V", bound=typing.Any)
 
 
+# tells 'file' that a .metadata file is 'data' (instead of making it guess)
+#                           U     V     X    SOH  version(2)  STX (padding):
+MAGIC_HEADER = bytes((0x55, 0x56, 0x58, 0x01, 0x32, 0x04, 0x00))  # hex, 7 bytes
+
+
 class Metadata(msgspec.Struct, array_like=True):
     """Structure of the .metadata file."""
 
@@ -126,6 +131,7 @@ def collect_metadata(spec: str) -> Result[Metadata, InvalidRequirement]:
 def store_metadata(meta: Metadata, venv: Path):
     """Save the metadata struct to .metadata in a venv."""
     with (venv / ".metadata").open("wb") as f:
+        f.write(MAGIC_HEADER)
         f.write(encoder.encode(meta))
 
 
@@ -136,5 +142,10 @@ def read_metadata(venv: Path) -> Maybe[Metadata]:
         return Empty()
 
     with metafile.open("rb") as f:
-        data = decoder.decode(f.read())  # type: Metadata
+        raw_b = f.read()
+
+        if raw_b.startswith(MAGIC_HEADER):
+            raw_b = raw_b[len(MAGIC_HEADER) :]
+
+        data = decoder.decode(raw_b)  # type: Metadata
         return Ok(data)

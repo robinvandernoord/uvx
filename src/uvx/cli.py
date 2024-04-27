@@ -198,6 +198,7 @@ UVX2_ARCH = {"x86_64", "aarch64"}
 
 
 def system_supports_uvx2() -> bool:
+    """Check whether current system supports uvx 2.x."""
     return sys.platform in UVX2_PLATFORMS and platform.machine() in UVX2_ARCH
 
 
