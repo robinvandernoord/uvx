@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.3 (2024-12-04)
+
+### Documentation
+
+* Add deprecation notice in favor of uvenv ([`b88b400`](https://github.com/robinvandernoord/uvx/commit/b88b40092669f4e60c533b17b9c4e78eb7ae0e18))
+
 ## v1.0.2 (2024-04-27)
 
 ### Fix
